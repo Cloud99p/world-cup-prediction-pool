@@ -34,7 +34,12 @@ let keeperBot: KeeperBot | null = null;
 
 if (process.env.ENABLE_KEEPER_BOT === 'true') {
   const connection = new Connection(process.env.SOLANA_RPC_URL!);
-  const wallet = anchor.Wallet.local();
+  
+  // Load wallet from custom path (not default Solana location)
+  const fs = require('fs');
+  const keypairPath = process.env.ANCHOR_WALLET || './keypairs/mainnet.json';
+  const secretKey = JSON.parse(fs.readFileSync(keypairPath, 'utf-8'));
+  const wallet = new anchor.Wallet(anchor.web3.Keypair.fromSecretKey(Uint8Array.from(secretKey)));
   
   keeperBot = new KeeperBot(
     {

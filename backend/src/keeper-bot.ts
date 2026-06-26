@@ -10,6 +10,7 @@ import { Program, AnchorProvider } from '@coral-xyz/anchor';
 import BN from 'bn.js';
 import TxLINEClient, { ScoreUpdate, StatValidation } from './txline-client';
 import * as anchor from '@coral-xyz/anchor';
+import idl from '../idl/prediction_pool.json' assert { type: 'json' };
 
 interface BetPool {
   fixtureId: number;
@@ -47,8 +48,7 @@ export class KeeperBot {
       commitment: 'confirmed',
     });
 
-    // Load program IDL (would be loaded from file in production)
-    const idl = require('../idl/prediction_pool.json');
+    // Load program IDL
     this.program = new Program(idl as any, config.predictionPoolProgramId, provider);
   }
 

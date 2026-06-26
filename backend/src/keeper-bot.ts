@@ -6,7 +6,8 @@
  */
 
 import { Connection, PublicKey, Transaction } from '@solana/web3.js';
-import { Program, AnchorProvider, BN } from '@coral-xyz/anchor';
+import { Program, AnchorProvider } from '@coral-xyz/anchor';
+import BN from 'bn.js';
 import TxLINEClient, { ScoreUpdate, StatValidation } from './txline-client';
 import * as anchor from '@coral-xyz/anchor';
 

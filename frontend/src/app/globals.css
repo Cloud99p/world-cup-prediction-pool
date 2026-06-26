@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 255, 255, 255;
+  --background-rgb: 26, 26, 26;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-rgb));
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #14F195;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #0ed682;
+}
+
+/* Wallet adapter styles override */
+.wm__wallet-list-modal-wallets-list {
+  background: #1a1a1a !important;
+}
+
+.wm__wallet-list-modal-wallets-list-item {
+  background: #2a2a2a !important;
+  color: white !important;
+}
+
+.wm__wallet-list-modal-wallets-list-item:hover {
+  background: #3a3a3a !important;
+}

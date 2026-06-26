@@ -79,25 +79,36 @@ export class KeeperBot {
    */
   private async startRestPolling() {
     console.log('🔄 Starting REST polling (every 30 seconds)...');
+    console.log('📝 JWT:', this.txlineClient.getJwt().substring(0, 50) + '...');
+    console.log('📝 API Token:', this.txlineClient.getApiToken().substring(0, 50) + '...');
     
     const poll = async () => {
       try {
         // Fetch match data via REST (with auth headers)
+        const jwt = this.txlineClient.getJwt();
+        const apiToken = this.txlineClient.getApiToken();
+        
+        console.log('📡 Fetching from TxLINE...');
+        
         const response = await fetch(
           `${this.config.txlineBaseUrl}/api/scores/snapshot/17952170`,
           {
             headers: {
-              'Authorization': `Bearer ${this.txlineClient.getJwt()}`,
-              'X-Api-Token': this.txlineClient.getApiToken(),
+              'Authorization': `Bearer ${jwt}`,
+              'X-Api-Token': apiToken,
             },
           }
         );
         
+        console.log('📊 Response status:', response.status);
+        
         if (response.ok) {
           const data = await response.json();
-          console.log('📊 REST poll successful:', data.fixtureId);
+          console.log('✅ REST poll successful:', data.fixtureId);
         } else {
+          const errorText = await response.text();
           console.log('⚠️ REST poll failed:', response.status, response.statusText);
+          console.log('Response:', errorText);
         }
       } catch (error: any) {
         console.log('⚠️ REST poll failed:', error.message);

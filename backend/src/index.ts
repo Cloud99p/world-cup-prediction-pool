@@ -9,9 +9,10 @@
 
 import express from 'express';
 import cors from 'cors';
-import { Connection, PublicKey } from '@solana/web3.js';
+import { Connection, PublicKey, Keypair } from '@solana/web3.js';
 import * as anchor from '@coral-xyz/anchor';
 import dotenv from 'dotenv';
+import fs from 'fs';
 import TxLINEClient from './txline-client.js';
 import KeeperBot from './keeper-bot.js';
 
@@ -36,10 +37,9 @@ if (process.env.ENABLE_KEEPER_BOT === 'true') {
   const connection = new Connection(process.env.SOLANA_RPC_URL!);
   
   // Load wallet from custom path (not default Solana location)
-  const fs = require('fs');
   const keypairPath = process.env.ANCHOR_WALLET || './keypairs/mainnet.json';
   const secretKey = JSON.parse(fs.readFileSync(keypairPath, 'utf-8'));
-  const wallet = new anchor.Wallet(anchor.web3.Keypair.fromSecretKey(Uint8Array.from(secretKey)));
+  const wallet = new anchor.Wallet(Keypair.fromSecretKey(Uint8Array.from(secretKey)));
   
   keeperBot = new KeeperBot(
     {

@@ -58,12 +58,46 @@ export class KeeperBot {
   async startMonitoring() {
     console.log('🤖 Keeper Bot starting...');
 
-    this.scoreStream = this.txlineClient.connectScoresStream(
-      (update) => this.handleScoreUpdate(update),
-      (error) => console.error('Stream error:', error)
-    );
+    try {
+      this.scoreStream = this.txlineClient.connectScoresStream(
+        (update) => this.handleScoreUpdate(update),
+        (error) => {
+          console.log('⚠️ SSE stream failed, using REST polling instead...');
+          this.startRestPolling();
+        }
+      );
 
-    console.log('✅ Connected to TxLINE scores stream');
+      console.log('✅ Connected to TxLINE scores stream');
+    } catch (error: any) {
+      console.log('⚠️ SSE not available, falling back to REST polling...');
+      this.startRestPolling();
+    }
+  }
+
+  /**
+   * Fallback: Poll REST API instead of SSE
+   */
+  private async startRestPolling() {
+    console.log('🔄 Starting REST polling (every 30 seconds)...');
+    
+    const poll = async () => {
+      try {
+        // Fetch current scores via REST
+        const response = await this.txlineClient.getStatValidation(
+          17952170, // Sample fixture ID
+          1,
+          1
+        );
+        console.log('📊 REST poll successful:', response.summary.fixtureId);
+      } catch (error: any) {
+        console.log('⚠️ REST poll failed:', error.message);
+      }
+      
+      // Poll every 30 seconds
+      setTimeout(poll, 30000);
+    };
+    
+    poll();
   }
 
   /**

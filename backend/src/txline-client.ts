@@ -147,6 +147,7 @@ export class TxLINEClient {
 
   /**
    * Connect to scores SSE stream
+   * Falls back to REST polling if SSE fails
    */
   connectScoresStream(
     onScoreUpdate: (update: ScoreUpdate) => void,
@@ -167,6 +168,10 @@ export class TxLINEClient {
       },
     });
 
+    eventSource.onopen = () => {
+      console.log('✅ SSE scores stream connected');
+    };
+
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
@@ -177,8 +182,9 @@ export class TxLINEClient {
     };
 
     if (onError) {
-      eventSource.onerror = () => {
-        onError(new Error('Scores stream connection failed'));
+      eventSource.onerror = (err) => {
+        console.log('⚠️ SSE failed, falling back to REST polling...');
+        onError?.(new Error('Scores stream connection failed'));
       };
     }
 

@@ -1,27 +1,53 @@
 'use client';
 
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import { useWallet } from '@/contexts/WalletContext';
 
 export default function Header() {
+  const { connected, publicKey, connecting, balance, connect, disconnect } = useWallet();
+
   return (
-    <header className="bg-dark/80 backdrop-blur-md border-b border-primary/20 sticky top-0 z-50">
+    <header className="bg-secondary border-b border-gray-800">
       <div className="container mx-auto px-4 py-4">
-        <div className="flex items-center justify-between">
+        <div className="flex justify-between items-center">
           {/* Logo */}
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-xl">⚽</span>
             </div>
             <div>
               <h1 className="text-white font-bold text-xl">World Cup Pool</h1>
-              <p className="text-gray-400 text-sm">Trustless Prediction Markets</p>
+              <p className="text-gray-400 text-xs">Prediction Markets</p>
             </div>
           </div>
 
           {/* Wallet Button */}
-          <div>
-            <WalletMultiButton className="bg-primary hover:bg-primary/90 text-dark font-bold rounded-lg px-6 py-2 transition-all" />
-          </div>
+          {!connected ? (
+            <button
+              onClick={connect}
+              disabled={connecting}
+              className="px-6 py-2 bg-primary hover:bg-primary-dark disabled:opacity-50 text-white rounded-lg font-semibold transition-colors"
+            >
+              {connecting ? 'Connecting...' : 'Connect Wallet'}
+            </button>
+          ) : (
+            <div className="flex items-center space-x-4">
+              {/* Balance */}
+              <div className="text-right">
+                <div className="text-white font-semibold">{balance.toFixed(3)} SOL</div>
+                <div className="text-gray-400 text-xs">
+                  {publicKey?.toBase58().slice(0, 4)}...{publicKey?.toBase58().slice(-4)}
+                </div>
+              </div>
+              
+              {/* Disconnect */}
+              <button
+                onClick={disconnect}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm transition-colors"
+              >
+                Disconnect
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </header>

@@ -1,37 +1,124 @@
 'use client';
 
-import { FC, ReactNode, useMemo } from 'react';
-import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
-import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
-import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
-import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
-import { clusterApiUrl } from '@solana/web3.js';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { Connection, PublicKey, Transaction, Keypair } from '@solana/web3.js';
 
-require('@solana/wallet-adapter-react-ui/styles.css');
-
-interface Props {
-  children: ReactNode;
+interface WalletContextType {
+  connected: boolean;
+  publicKey: PublicKey | null;
+  connecting: boolean;
+  balance: number;
+  connect: () => Promise<void>;
+  disconnect: () => void;
+  signTransaction: (transaction: Transaction) => Promise<Transaction>;
+  network: string;
 }
 
-const WalletContextProvider: FC<Props> = ({ children }) => {
-  const network = WalletAdapterNetwork.Devnet;
-  const endpoint = useMemo(() => clusterApiUrl(network), [network]);
+const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
-  const wallets = useMemo(
-    () => [
-      new PhantomWalletAdapter(),
-      new SolflareWalletAdapter({ network }),
-    ],
-    [network]
+export function WalletProvider({ children }: { children: ReactNode }) {
+  const [connected, setConnected] = useState(false);
+  const [publicKey, setPublicKey] = useState<PublicKey | null>(null);
+  const [connecting, setConnecting] = useState(false);
+  const [balance, setBalance] = useState(0);
+  const [network, setNetwork] = useState('devnet');
+
+  // Connection
+  const connection = new Connection(
+    network === 'devnet' 
+      ? 'https://api.devnet.solana.com' 
+      : 'https://api.mainnet-beta.solana.com',
+    'confirmed'
   );
+
+  // Check for Phantom on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const checkWallet = async () => {
+        const provider = (window as any).solana;
+        if (provider?.isPhantom) {
+          try {
+            const response = await provider.connect({ onlyIfTrusted: true });
+            setPublicKey(response.publicKey);
+            setConnected(true);
+            
+            // Fetch balance
+            const bal = await connection.getBalance(response.publicKey);
+            setBalance(bal / 1e9);
+          } catch (err) {
+            // Not connected, that's fine
+          }
+        }
+      };
+      checkWallet();
+    }
+  }, [connection]);
+
+  const connect = async () => {
+    setConnecting(true);
+    try {
+      const provider = (window as any).solana;
+      
+      if (!provider) {
+        window.open('https://phantom.app/', '_blank');
+        throw new Error('Phantom not installed');
+      }
+
+      const response = await provider.connect();
+      setPublicKey(response.publicKey);
+      setConnected(true);
+      
+      // Fetch balance
+      const bal = await connection.getBalance(response.publicKey);
+      setBalance(bal / 1e9);
+    } catch (err: any) {
+      console.error('Connection error:', err);
+      throw err;
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  const disconnect = async () => {
+    const provider = (window as any).solana;
+    if (provider) {
+      await provider.disconnect();
+    }
+    setPublicKey(null);
+    setConnected(false);
+    setBalance(0);
+  };
+
+  const signTransaction = async (transaction: Transaction) => {
+    const provider = (window as any).solana;
+    if (!provider) {
+      throw new Error('Wallet not connected');
+    }
+    return await provider.signTransaction(transaction);
+  };
 
   return (
-    <ConnectionProvider endpoint={endpoint}>
-      <WalletProvider wallets={wallets} autoConnect>
-        <WalletModalProvider>{children}</WalletModalProvider>
-      </WalletProvider>
-    </ConnectionProvider>
+    <WalletContext.Provider
+      value={{
+        connected,
+        publicKey,
+        connecting,
+        balance,
+        connect,
+        disconnect,
+        signTransaction,
+        network,
+      }}
+    >
+      {children}
+    </WalletContext.Provider>
   );
-};
+}
 
-export default WalletContextProvider;
+export function useWallet() {
+  const context = useContext(WalletContext);
+  if (context === undefined) {
+    throw new Error('useWallet must be used within a WalletProvider');
+  }
+  return context;
+}

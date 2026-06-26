@@ -1,13 +1,13 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-import WalletContextProvider from "@/contexts/WalletContext";
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
+import { WalletProvider } from '@/contexts/WalletContext';
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: "World Cup Prediction Pool",
-  description: "Trustless prediction markets powered by TxLINE",
+  title: 'World Cup Prediction Pool',
+  description: 'Trustless prediction markets for the World Cup',
 };
 
 export default function RootLayout({
@@ -18,9 +18,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <WalletContextProvider>
+        <WalletProvider>
           {children}
-        </WalletContextProvider>
+        </WalletProvider>
       </body>
     </html>
   );

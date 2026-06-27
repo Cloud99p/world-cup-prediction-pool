@@ -17,6 +17,7 @@ import * as anchor from '@coral-xyz/anchor';
 import { Connection, Keypair, PublicKey, SystemProgram } from '@solana/web3.js';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 
 let program: anchor.Program;
 
@@ -47,8 +48,8 @@ async function subscribe() {
   } else {
     // Try common Solana CLI wallet locations
     const defaultPaths = [
-      path.join(require('os').homedir(), '.config', 'solana', 'id.json'),
-      path.join(require('os').homedir(), 'solana-tx-stack', 'keypairs', 'mainnet.json'),
+      path.join(os.homedir(), '.config', 'solana', 'id.json'),
+      path.join(os.homedir(), 'solana-tx-stack', 'keypairs', 'mainnet.json'),
       './keypairs/mainnet.json',
     ];
     

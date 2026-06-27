@@ -22,6 +22,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [connecting, setConnecting] = useState(false);
   const [balance, setBalance] = useState(0);
   const [network, setNetwork] = useState('devnet');
+  const [manuallyDisconnected, setManuallyDisconnected] = useState(false);
 
   // Connection
   const connection = new Connection(
@@ -31,9 +32,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     'confirmed'
   );
 
-  // Check for Phantom on mount
+  // Check for Phantom on mount (only if not manually disconnected)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && !manuallyDisconnected) {
       const checkWallet = async () => {
         const provider = (window as any).solana;
         if (provider?.isPhantom) {
@@ -52,7 +53,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       };
       checkWallet();
     }
-  }, [connection]);
+  }, [connection, manuallyDisconnected]);
 
   const connect = async () => {
     setConnecting(true);
@@ -67,6 +68,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       const response = await provider.connect();
       setPublicKey(response.publicKey);
       setConnected(true);
+      setManuallyDisconnected(false); // Reset flag on manual connect
       
       // Fetch balance
       const bal = await connection.getBalance(response.publicKey);
@@ -87,6 +89,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setPublicKey(null);
     setConnected(false);
     setBalance(0);
+    setManuallyDisconnected(true); // Prevent auto-reconnect
   };
 
   const signTransaction = async (transaction: Transaction) => {

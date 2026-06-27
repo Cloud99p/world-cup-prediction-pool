@@ -117,17 +117,55 @@ async function subscribe() {
     TOKEN_2022_PROGRAM_ID
   );
 
-  // Get or create user token account
-  const userTokenAccount = await getOrCreateAssociatedTokenAccount(
-    connection,
-    wallet.payer!,
+  // Get user's token account address (create if doesn't exist)
+  const userAta = getAssociatedTokenAddressSync(
     SUBSCRIPTION_TOKEN_MINT,
     wallet.publicKey,
-    true,
-    'confirmed',
+    false,
     TOKEN_2022_PROGRAM_ID,
     ASSOCIATED_TOKEN_PROGRAM_ID
   );
+  
+  // Check if token account exists
+  let userTokenAccountExists = false;
+  try {
+    await connection.getAccountInfo(userAta);
+    userTokenAccountExists = true;
+  } catch (e) {
+    userTokenAccountExists = false;
+  }
+  
+  // Create token account if it doesn't exist
+  if (!userTokenAccountExists) {
+    console.log('📝 Creating TxLINE token account...');
+    const { createAssociatedTokenAccountInstruction } = await import('@solana/spl-token');
+    
+    const createAccountIx = createAssociatedTokenAccountInstruction(
+      wallet.publicKey, // payer
+      userAta, // ATA
+      wallet.publicKey, // owner
+      SUBSCRIPTION_TOKEN_MINT, // mint
+      TOKEN_2022_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+    
+    const tx = new anchor.web3.Transaction().add(createAccountIx);
+    tx.feePayer = wallet.publicKey;
+    tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+    
+    const signature = await anchor.web3.sendAndConfirmTransaction(
+      connection,
+      tx,
+      [wallet.payer!],
+      { commitment: 'confirmed' }
+    );
+    
+    console.log('✅ Token account created:', signature);
+  } else {
+    console.log('✅ Token account already exists');
+  }
+  
+  const userTokenAccount = { address: userAta };
 
   console.log('\n📝 Sending subscription transaction (FREE World Cup tier)...');
   

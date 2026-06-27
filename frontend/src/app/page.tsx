@@ -2,6 +2,7 @@
 
 import { useWallet } from '@/contexts/WalletContext';
 import Header from '@/components/Header';
+import MatchList from '@/components/MatchList';
 
 export default function Home() {
   const { connected, publicKey, balance } = useWallet();
@@ -51,13 +52,8 @@ export default function Home() {
           </div>
         )}
 
-        {/* Match List Placeholder */}
-        <div className="p-8 bg-secondary/20 rounded-lg text-center">
-          <h3 className="text-xl font-bold text-white mb-4">Matches Coming Soon</h3>
-          <p className="text-gray-400">
-            Backend is running! Match data will be loaded from the API.
-          </p>
-        </div>
+        {/* Match List */}
+        <MatchList />
       </main>
     </div>
   );

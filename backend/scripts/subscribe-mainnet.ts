@@ -68,27 +68,20 @@ async function main() {
   const idl = JSON.parse(fs.readFileSync(idlPath, "utf-8"));
   const program = new anchor.Program(idl, TXLINE_PROGRAM_ID, provider);
 
-  // Derive pricing_matrix PDA
+  // Derive pricing_matrix PDA (exact same as docs)
   const [pricingMatrixPda] = PublicKey.findProgramAddressSync(
     [Buffer.from("pricing_matrix")],
     TXLINE_PROGRAM_ID
   );
   console.log(`📊 Pricing Matrix PDA: ${pricingMatrixPda.toBase58()}`);
 
-  // Check if pricing_matrix exists
-  try {
-    const accountInfo = await connection.getAccountInfo(pricingMatrixPda);
-    if (!accountInfo) {
-      console.error("❌ pricing_matrix account not initialized!");
-      console.log("\n⚠️  This means TxODDS hasn't initialized the free tier yet.");
-      console.log("💡 Contact TxODDS support to initialize pricing_matrix on mainnet.");
-      process.exit(1);
-    }
-    console.log("✅ pricing_matrix account exists");
-  } catch (error: any) {
-    console.error("❌ Error checking pricing_matrix:", error.message);
+  // Verify it exists
+  const accountInfo = await connection.getAccountInfo(pricingMatrixPda);
+  if (!accountInfo) {
+    console.error("❌ pricing_matrix account not found!");
     process.exit(1);
   }
+  console.log(`✅ pricing_matrix exists (${accountInfo.data.length} bytes)`);
 
   // Derive token accounts
   const [tokenTreasuryPda] = PublicKey.findProgramAddressSync(
@@ -113,9 +106,13 @@ async function main() {
   console.log(`   Cost: FREE (no TxL required)`);
 
   console.log("\n🚀 Sending subscription transaction...");
+  console.log("📋 Accounts:");
+  console.log(`   user: ${wallet.publicKey.toBase58()}`);
+  console.log(`   pricingMatrix: ${pricingMatrixPda.toBase58()}`);
+  console.log(`   tokenMint: ${SUBSCRIPTION_TOKEN_MINT.toBase58()}`);
 
   try {
-    // Subscribe on-chain
+    // Subscribe on-chain (FREE - no TxL transfer for free tier)
     const txSig = await program.methods
       .subscribe(SERVICE_LEVEL_ID, DURATION_WEEKS)
       .accounts({
@@ -140,13 +137,12 @@ async function main() {
     
   } catch (error: any) {
     console.error("\n❌ Subscription failed:", error.message);
+    console.error("\n📝 Error logs:", error.logs?.join("\n"));
     
     if (error.message.includes("pricing_matrix")) {
-      console.log("\n⚠️  pricing_matrix not initialized on mainnet");
-      console.log("💡 Contact TxODDS support (ticket-0013)");
-    } else if (error.message.includes("insufficient")) {
-      console.log("\n⚠️  Insufficient SOL balance");
-      console.log("💡 Add some SOL to your wallet");
+      console.log("\n⚠️  Issue with pricing_matrix account");
+    } else if (error.message.includes("invalid")) {
+      console.log("\n⚠️  Invalid account provided");
     }
     
     process.exit(1);

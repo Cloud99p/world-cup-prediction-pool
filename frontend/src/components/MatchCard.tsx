@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useWallet } from '@solana/wallet-adapter-react';
 import { useBetStore } from '@/store/betStore';
 import { MatchFixture, ScoreUpdate } from '@/types';
 import { useLiveScores } from '@/hooks/useLiveScores';
@@ -11,7 +10,6 @@ interface MatchCardProps {
 }
 
 export default function MatchCard({ match }: MatchCardProps) {
-  const { connected } = useWallet();
   const { setSelectedOutcome, hasSelection, clearBetSlip } = useBetStore();
   const [selectedOutcome, setSelectedOutcomeState] = useState<string | null>(null);
   

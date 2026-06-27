@@ -15,14 +15,23 @@
 
 import * as anchor from '@coral-xyz/anchor';
 import { Connection, Keypair, PublicKey, SystemProgram } from '@solana/web3.js';
+import {
+  TOKEN_2022_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  getAssociatedTokenAddressSync,
+  getOrCreateAssociatedTokenAccount,
+} from '@solana/spl-token';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
 let program: anchor.Program;
 
-// TxLINE Program ID (from your .env)
-const TXLINE_PROGRAM_ID = new PublicKey(process.env.TXLINE_PROGRAM_ID || '6pW64gN1s2uqjHkn1unFeEjAwJkPGHoppGvS715wyP2J');
+// TxLINE Program ID - MainNet
+const TXLINE_PROGRAM_ID = new PublicKey('9ExbZjAapQww1vfcisDmrngPinHTEfpjYRWMunJgcKaA');
+
+// Token Mint for TxLINE subscriptions
+const SUBSCRIPTION_TOKEN_MINT = new PublicKey('sLX1i9dfmsuyFBmJTWuGjjRmG4VPWYK6dRRKSM4BCSx');
 
 // Free tier config
 const SERVICE_LEVEL_ID = 12; // World Cup & Int Friendlies (REAL-TIME)
@@ -80,26 +89,14 @@ async function subscribe() {
   const provider = new anchor.AnchorProvider(connection, wallet, { commitment: 'confirmed' });
   anchor.setProvider(provider);
 
-  // Load program - try prediction_pool first, then txline
-  const idlPaths = ['./idl/prediction_pool.json', './idl/txline.json'];
+  // Load txoracle program IDL
+  const idlPath = './idl/txoracle.json';
   
-  for (const idlPath of idlPaths) {
-    try {
-      const idl = JSON.parse(fs.readFileSync(idlPath, 'utf-8'));
-      program = new anchor.Program(idl, TXLINE_PROGRAM_ID, provider);
-      console.log(`📄 Loaded IDL from: ${idlPath}`);
-      break;
-    } catch (e) {
-      continue;
-    }
-  }
+  const idl = JSON.parse(fs.readFileSync(idlPath, 'utf-8'));
+  program = new anchor.Program(idl, TXLINE_PROGRAM_ID, provider);
+  console.log(`📄 Loaded txoracle IDL from: ${idlPath}`);
 
-  if (!program) {
-    console.error('❌ Could not find IDL file. Please create one or download from TxLINE.');
-    process.exit(1);
-  }
-
-  console.log('\n📡 Fetching pricing matrix...');
+  console.log('\n📡 Fetching PDAs...');
   
   // Get pricing matrix PDA
   const [pricingMatrixPda] = PublicKey.findProgramAddressSync(
@@ -107,16 +104,47 @@ async function subscribe() {
     TXLINE_PROGRAM_ID
   );
 
-  console.log('\n📝 Sending subscription transaction (FREE - no tokens required)...');
+  // Get token treasury PDA and vault
+  const [tokenTreasuryPda] = PublicKey.findProgramAddressSync(
+    [Buffer.from('token_treasury_v2')],
+    TXLINE_PROGRAM_ID
+  );
+  
+  const tokenTreasuryVault = getAssociatedTokenAddressSync(
+    SUBSCRIPTION_TOKEN_MINT,
+    tokenTreasuryPda,
+    true,
+    TOKEN_2022_PROGRAM_ID
+  );
+
+  // Get or create user token account
+  const userTokenAccount = await getOrCreateAssociatedTokenAccount(
+    connection,
+    wallet.payer!,
+    SUBSCRIPTION_TOKEN_MINT,
+    wallet.publicKey,
+    true,
+    'confirmed',
+    TOKEN_2022_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID
+  );
+
+  console.log('\n📝 Sending subscription transaction (FREE World Cup tier)...');
   
   try {
-    // Subscribe on-chain - simplified accounts for free tier
+    // Subscribe on-chain
     const txSig = await program.methods
       .subscribe(SERVICE_LEVEL_ID, DURATION_WEEKS)
       .accounts({
         user: wallet.publicKey,
         pricingMatrix: pricingMatrixPda,
+        tokenMint: SUBSCRIPTION_TOKEN_MINT,
+        userTokenAccount: userTokenAccount.address,
+        tokenTreasuryVault,
+        tokenTreasuryPda,
+        tokenProgram: TOKEN_2022_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       })
       .rpc();
 

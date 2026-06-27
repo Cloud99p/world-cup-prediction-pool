@@ -16,9 +16,10 @@
 import * as anchor from '@coral-xyz/anchor';
 import { Connection, Keypair, PublicKey, SystemProgram } from '@solana/web3.js';
 import {
-  TOKEN_2022_PROGRAM_ID,
+  TOKEN_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
   getAssociatedTokenAddressSync,
+  createAssociatedTokenAccountInstruction,
 } from '@solana/spl-token';
 import fs from 'fs';
 import path from 'path';
@@ -113,7 +114,7 @@ async function subscribe() {
     SUBSCRIPTION_TOKEN_MINT,
     tokenTreasuryPda,
     true,
-    TOKEN_2022_PROGRAM_ID
+    TOKEN_PROGRAM_ID
   );
 
   // Get user's token account address (create if doesn't exist)
@@ -121,7 +122,7 @@ async function subscribe() {
     SUBSCRIPTION_TOKEN_MINT,
     wallet.publicKey,
     false,
-    TOKEN_2022_PROGRAM_ID,
+    TOKEN_PROGRAM_ID,
     ASSOCIATED_TOKEN_PROGRAM_ID
   );
   
@@ -131,14 +132,13 @@ async function subscribe() {
   // Create token account if it doesn't exist
   if (!accountInfo) {
     console.log('📝 Creating TxLINE token account...');
-    const { createAssociatedTokenAccountInstruction } = await import('@solana/spl-token');
     
     const createAccountIx = createAssociatedTokenAccountInstruction(
       wallet.publicKey, // payer
       userAta, // ATA
       wallet.publicKey, // owner
       SUBSCRIPTION_TOKEN_MINT, // mint
-      TOKEN_2022_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
       ASSOCIATED_TOKEN_PROGRAM_ID
     );
     
@@ -171,7 +171,7 @@ async function subscribe() {
         userTokenAccount: userAta,
         tokenTreasuryVault,
         tokenTreasuryPda,
-        tokenProgram: TOKEN_2022_PROGRAM_ID,
+        tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       })

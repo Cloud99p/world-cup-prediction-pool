@@ -19,7 +19,6 @@ import {
   TOKEN_2022_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
   getAssociatedTokenAddressSync,
-  getOrCreateAssociatedTokenAccount,
 } from '@solana/spl-token';
 import fs from 'fs';
 import path from 'path';
@@ -127,16 +126,10 @@ async function subscribe() {
   );
   
   // Check if token account exists
-  let userTokenAccountExists = false;
-  try {
-    await connection.getAccountInfo(userAta);
-    userTokenAccountExists = true;
-  } catch (e) {
-    userTokenAccountExists = false;
-  }
+  const accountInfo = await connection.getAccountInfo(userAta);
   
   // Create token account if it doesn't exist
-  if (!userTokenAccountExists) {
+  if (!accountInfo) {
     console.log('📝 Creating TxLINE token account...');
     const { createAssociatedTokenAccountInstruction } = await import('@solana/spl-token');
     
@@ -164,8 +157,6 @@ async function subscribe() {
   } else {
     console.log('✅ Token account already exists');
   }
-  
-  const userTokenAccount = { address: userAta };
 
   console.log('\n📝 Sending subscription transaction (FREE World Cup tier)...');
   
@@ -177,7 +168,7 @@ async function subscribe() {
         user: wallet.publicKey,
         pricingMatrix: pricingMatrixPda,
         tokenMint: SUBSCRIPTION_TOKEN_MINT,
-        userTokenAccount: userTokenAccount.address,
+        userTokenAccount: userAta,
         tokenTreasuryVault,
         tokenTreasuryPda,
         tokenProgram: TOKEN_2022_PROGRAM_ID,

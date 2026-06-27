@@ -51,6 +51,18 @@ export interface Match {
   league: string;
 }
 
+export interface MatchFixture {
+  fixtureId: number;
+  leagueId: number;
+  homeTeam: string;
+  awayTeam: string;
+  startTime: number;
+  status: 'scheduled' | 'live' | 'finished' | 'cancelled';
+  homeScore?: number;
+  awayScore?: number;
+  period?: string;
+}
+
 export type MatchState = 
   | 'NS'  // Not Started
   | '1H'  // First Half

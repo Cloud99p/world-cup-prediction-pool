@@ -64,6 +64,78 @@ app.get('/health', (req, res) => {
 });
 
 /**
+ * Get live/upcoming matches from TxLINE
+ */
+app.get('/api/matches', async (req, res) => {
+  try {
+    // For demo: return mock data if TxLINE not configured
+    if (!process.env.TXLINE_API_TOKEN) {
+      return res.json({
+        matches: [
+          {
+            fixtureId: 17952170,
+            leagueId: 1,
+            homeTeam: 'Brazil',
+            awayTeam: 'Germany',
+            startTime: new Date('2026-07-01T15:00:00Z').getTime(),
+            status: 'scheduled',
+          },
+          {
+            fixtureId: 17952171,
+            leagueId: 1,
+            homeTeam: 'France',
+            awayTeam: 'Argentina',
+            startTime: new Date('2026-07-01T19:00:00Z').getTime(),
+            status: 'scheduled',
+          },
+          {
+            fixtureId: 17952172,
+            leagueId: 1,
+            homeTeam: 'Spain',
+            awayTeam: 'Netherlands',
+            startTime: new Date('2026-07-02T15:00:00Z').getTime(),
+            status: 'scheduled',
+          },
+        ],
+        source: 'demo',
+      });
+    }
+
+    // Fetch from TxLINE
+    const fixtures = await txlineClient.getLiveFixtures();
+    res.json({ matches: fixtures, source: 'txline' });
+  } catch (error: any) {
+    console.error('Failed to fetch matches:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to fetch matches',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * Get match details by fixture ID
+ */
+app.get('/api/matches/:fixtureId', async (req, res) => {
+  try {
+    const fixtureId = parseInt(req.params.fixtureId);
+    
+    if (!process.env.TXLINE_API_TOKEN) {
+      return res.status(400).json({ error: 'TxLINE not configured' });
+    }
+
+    const fixture = await txlineClient.getFixtureSnapshot(fixtureId);
+    res.json({ match: fixture });
+  } catch (error: any) {
+    console.error('Failed to fetch match details:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to fetch match details',
+      message: error.message,
+    });
+  }
+});
+
+/**
  * Get active pools
  */
 app.get('/api/pools', async (req, res) => {

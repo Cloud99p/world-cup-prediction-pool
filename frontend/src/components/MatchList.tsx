@@ -3,17 +3,17 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from 'react-query';
 import apiClient from '@/lib/api';
-import { PredictionPool } from '@/types';
+import { MatchFixture } from '@/types';
 import MatchCard from './MatchCard';
 
 export default function MatchList() {
   const [filter, setFilter] = useState<'all' | 'live' | 'upcoming'>('all');
 
-  const { data: pools, isLoading, error } = useQuery('pools', () => apiClient.getPools());
+  const { data: matches, isLoading, error } = useQuery('matches', () => apiClient.getMatches());
 
-  const filteredPools = pools?.filter(pool => {
-    if (filter === 'live') return !pool.isSettled;
-    if (filter === 'upcoming') return true;
+  const filteredMatches = matches?.filter(match => {
+    if (filter === 'live') return match.status === 'live';
+    if (filter === 'upcoming') return match.status === 'scheduled';
     return true;
   });
 
@@ -57,16 +57,16 @@ export default function MatchList() {
       )}
 
       {/* Match Cards */}
-      {!isLoading && !error && filteredPools && filteredPools.length > 0 && (
+      {!isLoading && !error && filteredMatches && filteredMatches.length > 0 && (
         <div className="grid grid-cols-1 gap-4">
-          {filteredPools.map((pool) => (
-            <MatchCard key={pool.fixtureId} pool={pool} />
+          {filteredMatches.map((match) => (
+            <MatchCard key={match.fixtureId} match={match} />
           ))}
         </div>
       )}
 
       {/* Empty State */}
-      {!isLoading && !error && filteredPools && filteredPools.length === 0 && (
+      {!isLoading && !error && filteredMatches && filteredMatches.length === 0 && (
         <div className="text-center py-12">
           <p className="text-gray-400">No matches found</p>
         </div>

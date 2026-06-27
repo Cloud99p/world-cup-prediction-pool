@@ -33,6 +33,18 @@ export interface ScoreUpdate {
   seq: number;
 }
 
+export interface FixtureSnapshot {
+  fixtureId: number;
+  leagueId: number;
+  homeTeam: string;
+  awayTeam: string;
+  startTime: number;
+  status: 'scheduled' | 'live' | 'finished' | 'cancelled';
+  homeScore?: number;
+  awayScore?: number;
+  period?: string;
+}
+
 export interface MerkleProof {
   hash: string;
   isRightSibling: boolean;
@@ -237,6 +249,32 @@ export class TxLINEClient {
   async getHistoricalScores(fixtureId: number): Promise<ScoreUpdate[]> {
     const response = await this.client.get(`/api/scores/historical/${fixtureId}`);
     return response.data as ScoreUpdate[];
+  }
+
+  /**
+   * Get fixture snapshot (match details)
+   */
+  async getFixtureSnapshot(fixtureId: number): Promise<FixtureSnapshot> {
+    const response = await this.client.get(`/api/scores/snapshot/${fixtureId}`);
+    return response.data as FixtureSnapshot;
+  }
+
+  /**
+   * Get all live fixtures
+   */
+  async getLiveFixtures(): Promise<FixtureSnapshot[]> {
+    const response = await this.client.get('/api/scores/live');
+    return response.data as FixtureSnapshot[];
+  }
+
+  /**
+   * Get upcoming fixtures for a league
+   */
+  async getUpcomingFixtures(leagueId: number, limit: number = 20): Promise<FixtureSnapshot[]> {
+    const response = await this.client.get('/api/scores/upcoming', {
+      params: { leagueId, limit },
+    });
+    return response.data as FixtureSnapshot[];
   }
 
   /**

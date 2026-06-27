@@ -3,13 +3,13 @@
 import { useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useBetStore } from '@/store/betStore';
-import { PredictionPool } from '@/types';
+import { MatchFixture } from '@/types';
 
 interface MatchCardProps {
-  pool: PredictionPool;
+  match: MatchFixture;
 }
 
-export default function MatchCard({ pool }: MatchCardProps) {
+export default function MatchCard({ match }: MatchCardProps) {
   const { connected } = useWallet();
   const { setSelectedOutcome, hasSelection, clearBetSlip } = useBetStore();
   const [selectedOutcome, setSelectedOutcomeState] = useState<string | null>(null);
@@ -18,7 +18,7 @@ export default function MatchCard({ pool }: MatchCardProps) {
     if (hasSelection) {
       clearBetSlip();
     }
-    setSelectedOutcome(pool.fixtureId, outcomeType as any, odds);
+    setSelectedOutcome(match.fixtureId, outcomeType as any, odds);
     setSelectedOutcomeState(outcomeType);
   };
 

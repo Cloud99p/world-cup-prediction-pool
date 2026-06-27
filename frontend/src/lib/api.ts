@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
-import { PredictionPool, ScoreUpdate, OddsUpdate, ApiResponse, PoolsResponse } from '@/types';
+import { PredictionPool, ScoreUpdate, OddsUpdate, ApiResponse, PoolsResponse, MatchFixture } from '@/types';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
 
@@ -34,6 +34,14 @@ class ApiClient {
   async getPools(): Promise<PredictionPool[]> {
     const response = await this.client.get<PoolsResponse>('/api/pools');
     return response.data.pools;
+  }
+
+  /**
+   * Get all matches (live + upcoming)
+   */
+  async getMatches(): Promise<MatchFixture[]> {
+    const response = await this.client.get<{ matches: MatchFixture[] }>('/api/matches');
+    return response.data.matches;
   }
 
   /**

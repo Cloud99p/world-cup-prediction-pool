@@ -9,7 +9,10 @@ import MatchCard from './MatchCard';
 export default function MatchList() {
   const [filter, setFilter] = useState<'all' | 'live' | 'upcoming'>('all');
 
-  const { data: matches, isLoading, error } = useQuery('matches', () => apiClient.getMatches());
+  const { data: matches, isLoading, error } = useQuery({
+    queryKey: ['matches'],
+    queryFn: () => apiClient.getMatches(),
+  });
 
   const filteredMatches = matches?.filter(match => {
     if (filter === 'live') return match.status === 'live';

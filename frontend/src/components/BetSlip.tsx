@@ -76,7 +76,7 @@ export default function BetSlip() {
       <div className="mb-4">
         <div className="text-sm text-gray-400 mb-1">Match</div>
         <div className="text-white font-medium">
-          {betSlip.fixtureId} (World Cup)
+          {betSlip.fixtureId} (Football)
         </div>
       </div>
 

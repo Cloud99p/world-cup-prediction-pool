@@ -21,7 +21,7 @@ export default function MatchList() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">World Cup Matches</h2>
+        <h2 className="text-2xl font-bold text-white">Football Matches</h2>
         
         {/* Filters */}
         <div className="flex space-x-2">

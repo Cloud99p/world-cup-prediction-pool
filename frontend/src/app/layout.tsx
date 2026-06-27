@@ -6,8 +6,8 @@ import { WalletProvider } from '@/contexts/WalletContext';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'World Cup Prediction Pool',
-  description: 'Trustless prediction markets for the World Cup',
+  title: 'Prediction Pool',
+  description: 'Trustless prediction markets for international football',
 };
 
 export default function RootLayout({

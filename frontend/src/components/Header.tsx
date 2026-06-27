@@ -15,7 +15,7 @@ export default function Header() {
               <span className="text-white font-bold text-xl">⚽</span>
             </div>
             <div>
-              <h1 className="text-white font-bold text-xl">World Cup Pool</h1>
+              <h1 className="text-white font-bold text-xl">Prediction Pool</h1>
               <p className="text-gray-400 text-xs">Prediction Markets</p>
             </div>
           </div>

@@ -46,7 +46,7 @@ export default function MatchCard({ pool }: MatchCardProps) {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
           <span className="px-3 py-1 bg-primary/20 text-primary rounded-full text-sm font-medium">
-            World Cup
+            Football
           </span>
           <span className="text-gray-400 text-sm">
             {formatDate(pool.startTime)}

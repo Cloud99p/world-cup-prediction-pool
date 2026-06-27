@@ -14,10 +14,10 @@ export default function Home() {
         {/* Welcome Section */}
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-white mb-2">
-            Welcome to World Cup Prediction Pool
+            Welcome to Prediction Pool
           </h2>
           <p className="text-gray-400">
-            Place predictions on World Cup matches and win big!
+            Place predictions on football matches and win big!
           </p>
         </div>
 

@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useBetStore } from '@/store/betStore';
-import { MatchFixture } from '@/types';
+import { MatchFixture, ScoreUpdate } from '@/types';
+import { useLiveScores } from '@/hooks/useLiveScores';
 
 interface MatchCardProps {
   match: MatchFixture;
@@ -13,6 +14,14 @@ export default function MatchCard({ match }: MatchCardProps) {
   const { connected } = useWallet();
   const { setSelectedOutcome, hasSelection, clearBetSlip } = useBetStore();
   const [selectedOutcome, setSelectedOutcomeState] = useState<string | null>(null);
+  
+  // Live score updates
+  const { getScore, isLive } = useLiveScores({ 
+    fixtureId: match.fixtureId,
+    enabled: match.status === 'live',
+  });
+  
+  const liveScore = getScore(match.fixtureId);
 
   const handleOutcomeClick = (outcomeType: string, odds: number) => {
     if (hasSelection) {
@@ -48,25 +57,45 @@ export default function MatchCard({ match }: MatchCardProps) {
           <span className="px-3 py-1 bg-primary/20 text-primary rounded-full text-sm font-medium">
             Football
           </span>
-          <span className="text-gray-400 text-sm">
-            {formatDate(pool.startTime)}
-          </span>
+          {match.status === 'live' ? (
+            <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm font-medium animate-pulse">
+              LIVE
+            </span>
+          ) : (
+            <span className="text-gray-400 text-sm">
+              {new Date(match.startTime).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Teams */}
+      {/* Teams & Live Score */}
       <div className="flex items-center justify-between mb-6">
         <div className="text-center flex-1">
-          <h3 className="text-xl font-bold text-white">{pool.homeTeam}</h3>
+          <h3 className="text-xl font-bold text-white">{match.homeTeam}</h3>
           <span className="text-gray-400 text-sm">Home</span>
         </div>
         
-        <div className="text-center">
-          <div className="text-3xl font-bold text-primary">VS</div>
+        <div className="text-center px-4">
+          {match.status === 'live' || liveScore ? (
+            <div className="text-4xl font-bold text-primary">
+              {liveScore?.homeScore ?? 0} - {liveScore?.awayScore ?? 0}
+            </div>
+          ) : (
+            <div className="text-3xl font-bold text-primary">VS</div>
+          )}
+          {isLive && (
+            <div className="text-xs text-green-400 mt-1 animate-pulse">● LIVE</div>
+          )}
         </div>
         
         <div className="text-center flex-1">
-          <h3 className="text-xl font-bold text-white">{pool.awayTeam}</h3>
+          <h3 className="text-xl font-bold text-white">{match.awayTeam}</h3>
           <span className="text-gray-400 text-sm">Away</span>
         </div>
       </div>

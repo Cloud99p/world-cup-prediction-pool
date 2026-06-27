@@ -98,35 +98,25 @@ export default function MatchCard({ match }: MatchCardProps) {
         </div>
       </div>
 
-      {/* Outcomes */}
+      {/* Outcomes - Demo buttons */}
       <div className="grid grid-cols-3 gap-3">
-        {pool.outcomes.map((outcome) => (
+        {['Home Win', 'Draw', 'Away Win'].map((outcomeType) => (
           <button
-            key={outcome.type}
-            onClick={() => handleOutcomeClick(outcome.type, outcome.odds)}
+            key={outcomeType}
+            onClick={() => handleOutcomeClick(outcomeType, 2.0)}
             className={`p-4 rounded-lg border-2 transition-all ${
-              selectedOutcome === outcome.type
+              selectedOutcome === outcomeType
                 ? 'border-primary bg-primary/20'
                 : 'border-gray-600 hover:border-gray-500'
             }`}
           >
-            <div className="text-sm text-gray-400 mb-1">{outcome.type.replace(/([A-Z])/g, ' $1').trim()}</div>
-            <div className="text-xl font-bold text-white">{outcome.odds.toFixed(2)}</div>
+            <div className="text-sm text-gray-400 mb-1">{outcomeType}</div>
+            <div className="text-xl font-bold text-white">2.00</div>
             <div className="text-xs text-gray-500 mt-1">
-              {formatStaked(outcome.totalStaked)} staked
+              Demo odds
             </div>
           </button>
         ))}
-      </div>
-
-      {/* Total Pool Info */}
-      <div className="mt-6 pt-4 border-t border-gray-700">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-400">Total Pool</span>
-          <span className="text-white font-medium">
-            {formatStaked(pool.totalStaked)} ({pool.betCount} bets)
-          </span>
-        </div>
       </div>
     </div>
   );

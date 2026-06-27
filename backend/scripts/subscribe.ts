@@ -16,7 +16,7 @@
 import * as anchor from '@coral-xyz/anchor';
 import { Connection, Keypair, PublicKey, SystemProgram } from '@solana/web3.js';
 import {
-  TOKEN_PROGRAM_ID,
+  TOKEN_2022_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
   getAssociatedTokenAddressSync,
   createAssociatedTokenAccountInstruction,
@@ -30,8 +30,8 @@ let program: anchor.Program;
 // TxLINE Program ID - MainNet
 const TXLINE_PROGRAM_ID = new PublicKey('9ExbZjAapQww1vfcisDmrngPinHTEfpjYRWMunJgcKaA');
 
-// Token Mint for TxLINE subscriptions
-const SUBSCRIPTION_TOKEN_MINT = new PublicKey('sLX1i9dfmsuyFBmJTWuGjjRmG4VPWYK6dRRKSM4BCSx');
+// TxL Token Mint - MainNet (from txline-docs.txodds.com/documentation/programs/addresses)
+const SUBSCRIPTION_TOKEN_MINT = new PublicKey('Zhw9TVKp68a1QrftncMSd6ELXKDtpVMNuMGr1jNwdeL');
 
 // Free tier config
 const SERVICE_LEVEL_ID = 12; // World Cup & Int Friendlies (REAL-TIME)
@@ -114,7 +114,7 @@ async function subscribe() {
     SUBSCRIPTION_TOKEN_MINT,
     tokenTreasuryPda,
     true,
-    TOKEN_PROGRAM_ID
+    TOKEN_2022_PROGRAM_ID
   );
 
   // Get user's token account address (create if doesn't exist)
@@ -122,7 +122,7 @@ async function subscribe() {
     SUBSCRIPTION_TOKEN_MINT,
     wallet.publicKey,
     false,
-    TOKEN_PROGRAM_ID,
+    TOKEN_2022_PROGRAM_ID,
     ASSOCIATED_TOKEN_PROGRAM_ID
   );
   
@@ -138,7 +138,7 @@ async function subscribe() {
       userAta, // ATA
       wallet.publicKey, // owner
       SUBSCRIPTION_TOKEN_MINT, // mint
-      TOKEN_PROGRAM_ID,
+      TOKEN_2022_PROGRAM_ID,
       ASSOCIATED_TOKEN_PROGRAM_ID
     );
     
@@ -171,7 +171,7 @@ async function subscribe() {
         userTokenAccount: userAta,
         tokenTreasuryVault,
         tokenTreasuryPda,
-        tokenProgram: TOKEN_PROGRAM_ID,
+        tokenProgram: TOKEN_2022_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       })

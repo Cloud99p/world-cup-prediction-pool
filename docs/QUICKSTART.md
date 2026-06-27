@@ -19,7 +19,7 @@ cd world-cup-prediction-pool
 # 1. Get guest JWT
 curl -X POST https://txline.txodds.com/auth/guest/start
 
-# 2. Subscribe to free World Cup tier (Service Level 12 = real-time)
+# 2. Subscribe to free international football tier (Service Level 12 = real-time)
 # Use Anchor to call subscribe instruction
 
 # 3. Activate API token

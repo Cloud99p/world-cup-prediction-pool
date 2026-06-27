@@ -2,11 +2,9 @@
 
 ## System Overview
 
-# World Cup Prediction Pool - Architecture
+# Prediction Pool - Architecture
 
-> ⚠️ **Disclaimer:** This project is not affiliated with, endorsed by, or sponsored by FIFA or any tournament organizer. "World Cup" is used for descriptive purposes only.
-
-World Cup Prediction Pool is a full-stack decentralized prediction market platform with three main layers:
+Prediction Pool is a full-stack decentralized prediction market platform with three main layers:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐

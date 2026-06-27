@@ -1,6 +1,6 @@
-# World Cup Prediction Pool - Frontend
+# Prediction Pool - Frontend
 
-React + TypeScript + Next.js frontend for the World Cup Prediction Pool hackathon project.
+React + TypeScript + Next.js frontend for the prediction pool hackathon project.
 
 ## Tech Stack
 
@@ -18,8 +18,6 @@ React + TypeScript + Next.js frontend for the World Cup Prediction Pool hackatho
 
 - Node.js 20+
 - npm or yarn
-
-> ⚠️ **Disclaimer:** This project is not affiliated with, endorsed by, or sponsored by FIFA or any tournament organizer. "World Cup" is used for descriptive purposes only. All trademarks and branding are property of their respective owners.
 
 ### Installation
 

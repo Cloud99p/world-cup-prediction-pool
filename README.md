@@ -1,8 +1,6 @@
-# World Cup Prediction Pool ⚽🏆
+# Prediction Pool
 
 **Trustless prediction markets for international football, powered by TxLINE's cryptographically verifiable data on Solana.**
-
-> ⚠️ **Disclaimer:** This project is not affiliated with, endorsed by, or sponsored by FIFA or any tournament organizer. "World Cup" is used for descriptive purposes only. All trademarks and branding are property of their respective owners.
 
 [![Superteam Hackathon](https://img.shields.io/badge/Superteam-Hackathon%202026-purple)](https://superteam.fun)
 [![Track](https://img.shields.io/badge/Track-Prediction%20Markets-blue)](https://superteam.fun/earn/hackathon/world-cup)
@@ -11,9 +9,9 @@
 
 ---
 
-## 🎯 What Is This?
+## What Is This?
 
-World Cup Prediction Pool enables **trustless, peer-to-peer betting** on World Cup matches using **cryptographically verifiable sports data** from TxLINE.
+Prediction Pool enables **trustless, peer-to-peer betting** on international football matches using **cryptographically verifiable sports data** from TxLINE.
 
 **Key Features:**
 - ✅ **Trustless Settlement** - CPI into TxLINE's `validate_stat` instruction
@@ -25,15 +23,15 @@ World Cup Prediction Pool enables **trustless, peer-to-peer betting** on World C
 
 ---
 
-## 🏆 Hackathon Submission
+## Submission
 
 **Track:** Prediction Markets & Settlement (18k USDT prize pool)
 
-**Superteam Earn:** [World Cup Hackathon](https://superteam.fun/earn/hackathon/world-cup)
+**Superteam Earn:** [Hackathon](https://superteam.fun/earn/hackathon/world-cup)
 
 ---
 
-## 🧪 Demo / Judge Testing
+## Demo / Judge Testing
 
 **For hackathon judges:** No wallet setup or tokens required!
 
@@ -50,8 +48,8 @@ World Cup Prediction Pool enables **trustless, peer-to-peer betting** on World C
 
 ```bash
 # Clone and install
-git clone https://github.com/Cloud99p/world-cup-prediction-pool.git
-cd world-cup-prediction-pool/backend
+git clone https://github.com/Cloud99p/prediction-pool.git
+cd prediction-pool/backend
 npm install
 
 # Use pre-configured demo credentials (no wallet needed)
@@ -70,7 +68,7 @@ npm run dev
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -91,8 +89,8 @@ anchor --version  # 0.29+
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/Cloud99p/world-cup-prediction-pool.git
-cd world-cup-prediction-pool
+git clone https://github.com/Cloud99p/prediction-pool.git
+cd prediction-pool
 ```
 
 ### 2. Backend Setup
@@ -172,7 +170,7 @@ anchor deploy
 // User selects match, outcome, and stake
 const bet = await program.methods
   .placeBet(
-    fixtureId,      // World Cup match ID
+    fixtureId,      // Match ID
     outcomeType,    // e.g., "home_win", "draw", "away_win"
     stakeAmount     // USDC amount (in lamports)
   )
@@ -440,4 +438,4 @@ MIT - Built for the Superteam World Cup Hackathon 2026
 
 ---
 
-*Built with ☁️ by Cloud99p for the Superteam World Cup Hackathon 2026*
+*Built with ☁️ by Cloud99p for the Superteam Hackathon 2026*

@@ -1,4 +1,4 @@
-# Demo Video Script - World Cup Prediction Pool
+# Demo Video Script - Prediction Pool
 
 **Duration:** 5 minutes  
 **Format:** Screen recording with voiceover  
@@ -11,7 +11,7 @@
 **Visual:** Title screen with project name and hackathon logo
 
 **Voiceover:**
-> "Welcome to World Cup Prediction Pool - a trustless prediction market platform built on Solana, powered by TxLINE's cryptographically verifiable sports data. I'm competing in the Superteam World Cup Hackathon 2026 in the Prediction Markets track."
+> "Welcome to Prediction Pool - a trustless prediction market platform built on Solana, powered by TxLINE's cryptographically verifiable sports data. I'm competing in the Superteam International Football Hackathon 2026 in the Prediction Markets track."
 
 ---
 
@@ -30,7 +30,7 @@
 
 **Steps:**
 1. Connect Phantom wallet
-2. Browse World Cup matches
+2. Browse football matches
 3. Select Brazil vs Germany
 4. Choose outcome: Home Win
 5. Enter stake: 100 USDC

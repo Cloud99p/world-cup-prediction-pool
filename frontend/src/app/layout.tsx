@@ -1,12 +1,9 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
-import { WalletProvider } from '@/contexts/WalletContext';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Providers } from './providers';
 
 const inter = Inter({ subsets: ['latin'] });
-
-const queryClient = new QueryClient();
 
 export const metadata: Metadata = {
   title: 'Prediction Pool',
@@ -21,11 +18,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <QueryClientProvider client={queryClient}>
-          <WalletProvider>
-            {children}
-          </WalletProvider>
-        </QueryClientProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

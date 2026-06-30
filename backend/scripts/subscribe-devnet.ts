@@ -32,7 +32,9 @@ const SUBSCRIPTION_TOKEN_MINT = new PublicKey('4Zao8ocPhmMgq7PdsYWyxvqySMGx7xb9c
 const TXLINE_BASE_URL = 'https://txline-dev.txodds.com';
 
 // Free tier config
-const SERVICE_LEVEL_ID = 12; // World Cup & Int Friendlies (REAL-TIME)
+// Per Aidan @ TxODDS: Use Service Level 1 (initialized on devnet)
+const SERVICE_LEVEL_ID = 1; // World Cup & Int Friendlies (60s delay) - WORKING!
+// const SERVICE_LEVEL_ID = 12; // Real-time (not initialized yet)
 const DURATION_WEEKS = 4;
 const SELECTED_LEAGUES: number[] = [];
 

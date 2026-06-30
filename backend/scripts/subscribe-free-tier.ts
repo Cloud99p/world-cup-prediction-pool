@@ -31,16 +31,16 @@ const SERVICE_LEVEL_ID = 12; // Real-time World Cup data
 const DURATION_WEEKS = 4; // 4 weeks
 const SELECTED_LEAGUES: number[] = []; // Empty for standard bundle
 
-// PDAs from IDL
-const PRICING_MATRIX_PDA = PublicKey.findProgramAddressSync(
+// PDAs from official TxLINE docs
+const [PRICING_MATRIX_PDA] = PublicKey.findProgramAddressSync(
   [Buffer.from("pricing_matrix")],
   TXLINE_PROGRAM_ID
-)[0];
+);
 
-const TOKEN_TREASURY_PDA = PublicKey.findProgramAddressSync(
-  [Buffer.from("token_treasury"), SUBSCRIPTION_TOKEN_MINT.toBuffer()],
+const [TOKEN_TREASURY_PDA] = PublicKey.findProgramAddressSync(
+  [Buffer.from("token_treasury_v2")],
   TXLINE_PROGRAM_ID
-)[0];
+);
 
 async function main() {
   console.log("🌍 TxLINE FREE Tier Subscription (Service Level 12)");
@@ -82,7 +82,8 @@ async function main() {
   console.log("\n🚀 Sending subscription transaction...");
 
   try {
-    // Subscribe on-chain following IDL structure
+    // Subscribe on-chain - FREE tier (no TxL payment required)
+    // Following official TxLINE docs: https://txline.txodds.com/documentation/worldcup
     const txSig = await program.methods
       .subscribe(new BN(SERVICE_LEVEL_ID), new BN(DURATION_WEEKS))
       .accounts({

@@ -51,12 +51,13 @@ async function activateToken(txSig: string) {
   // Step 4: Activate API token
   console.log('\n📡 Activating API token...');
   try {
+    // Following official docs: https://txline.txodds.com/documentation/worldcup
     const activationResponse = await axios.post(
       'https://txline.txodds.com/api/token/activate',
       {
         txSig,
-        signature: walletSignature,
-        jwt,
+        walletSignature,
+        leagues: [], // Empty for free tier standard bundle
       },
       {
         headers: {

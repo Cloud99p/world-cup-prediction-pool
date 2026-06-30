@@ -31,14 +31,14 @@ const SERVICE_LEVEL_ID = 12; // Real-time World Cup data
 const DURATION_WEEKS = 4; // 4 weeks
 const SELECTED_LEAGUES: number[] = []; // Empty for standard bundle
 
-// PDAs from TxLINE docs
+// PDAs from IDL
 const PRICING_MATRIX_PDA = PublicKey.findProgramAddressSync(
   [Buffer.from("pricing_matrix")],
   TXLINE_PROGRAM_ID
 )[0];
 
-const TOKEN_TREASURY_V2_PDA = PublicKey.findProgramAddressSync(
-  [Buffer.from("token_treasury_v2")],
+const TOKEN_TREASURY_PDA = PublicKey.findProgramAddressSync(
+  [Buffer.from("token_treasury"), SUBSCRIPTION_TOKEN_MINT.toBuffer()],
   TXLINE_PROGRAM_ID
 )[0];
 
@@ -82,19 +82,22 @@ async function main() {
   console.log("\n🚀 Sending subscription transaction...");
 
   try {
-    // Subscribe on-chain following TxLINE docs workflow
-    // Required accounts: pricing_matrix + token_treasury_v2
+    // Subscribe on-chain following IDL structure
     const txSig = await program.methods
       .subscribe(new BN(SERVICE_LEVEL_ID), new BN(DURATION_WEEKS))
       .accounts({
         user: wallet.publicKey,
         pricingMatrix: PRICING_MATRIX_PDA,
-        tokenTreasuryV2: TOKEN_TREASURY_V2_PDA,
         tokenMint: SUBSCRIPTION_TOKEN_MINT,
         userTokenAccount: await anchor.utils.token.associatedAddress({
           mint: SUBSCRIPTION_TOKEN_MINT,
           owner: wallet.publicKey,
         }),
+        tokenTreasuryVault: await anchor.utils.token.associatedAddress({
+          mint: SUBSCRIPTION_TOKEN_MINT,
+          owner: TOKEN_TREASURY_PDA,
+        }),
+        tokenTreasuryPda: TOKEN_TREASURY_PDA,
         tokenProgram: TOKEN_2022_PROGRAM_ID,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,

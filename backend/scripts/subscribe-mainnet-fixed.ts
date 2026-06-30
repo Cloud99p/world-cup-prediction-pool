@@ -16,7 +16,11 @@ import {
 } from '@solana/spl-token';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import os from 'os';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Mainnet configuration (per official docs)
 const TXLINE_PROGRAM_ID = new PublicKey('9ExbZjAapQww1vfcisDmrngPinHTEfpjYRWMunJgcKaA');
@@ -88,7 +92,7 @@ async function subscribe() {
   }
 
   // Load txoracle program IDL
-  const idlPath = './idl/txoracle.json';
+  const idlPath = path.join(__dirname, '../idl/txoracle.json');
   const idl = JSON.parse(fs.readFileSync(idlPath, 'utf-8'));
   const program = new anchor.Program(idl, TXLINE_PROGRAM_ID, provider);
   console.log(`📄 Loaded txoracle IDL\n`);

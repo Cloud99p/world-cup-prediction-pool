@@ -13,11 +13,15 @@
 import nacl from 'tweetnacl';
 import axios from 'axios';
 import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { Keypair } from '@solana/web3.js';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 async function activateToken(txSig: string) {
-  // Load wallet - use existing solana-tx-stack mainnet wallet
-  const walletPath = '../../.openclaw/workspace/solana-tx-stack/keypairs/mainnet.json';
+  // Load wallet from backend keypairs
+  const walletPath = path.join(__dirname, '../keypairs/mainnet.json');
   const secretKey = JSON.parse(fs.readFileSync(walletPath, 'utf-8'));
   const wallet = Keypair.fromSecretKey(Uint8Array.from(secretKey));
 
@@ -26,14 +30,14 @@ async function activateToken(txSig: string) {
 
   // Step 1: Get fresh JWT
   console.log('\n📡 Getting guest JWT...');
-  const authResponse = await axios.post('https://txline.txodds.com/auth/guest/start');
+  const authResponse = await axios.post('https://txline.txodds.com/api/auth/guest/start');
   const jwt = authResponse.data.token;
   console.log('✅ JWT received:', jwt.substring(0, 50) + '...');
 
   // Step 2: Create message to sign
-  // Format: txSig:leagues:jwt (leagues is empty for free tier)
+  // Per TxLINE docs: Format is "${txSig}::${jwt}" for free tier (empty leagues = double colon)
   const leagues: number[] = []; // Empty for World Cup free tier
-  const messageString = `${txSig}:${leagues.join(',')}:${jwt}`;
+  const messageString = `${txSig}::${jwt}`; // Double colon for empty leagues
   const message = new TextEncoder().encode(messageString);
   
   console.log('\n📝 Message to sign:', messageString);
@@ -51,8 +55,8 @@ async function activateToken(txSig: string) {
       'https://txline.txodds.com/api/token/activate',
       {
         txSig,
-        walletSignature,
-        leagues,
+        signature: walletSignature,
+        jwt,
       },
       {
         headers: {
@@ -62,17 +66,15 @@ async function activateToken(txSig: string) {
       }
     );
 
-    const apiToken = activationResponse.data.token || activationResponse.data;
+    const apiToken = activationResponse.data.apiToken || activationResponse.data.token || activationResponse.data;
     
     console.log('\n✅ API Token activated successfully!');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('API Token:', apiToken);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('\n📝 Update your .env file:');
-    console.log(`TXLINE_API_TOKEN=${apiToken}`);
     
-    // Optionally write to .env
-    const envPath = './.env';
+    // Write to .env
+    const envPath = path.join(__dirname, '../.env');
     if (fs.existsSync(envPath)) {
       let envContent = fs.readFileSync(envPath, 'utf-8');
       envContent = envContent.replace(
@@ -81,10 +83,22 @@ async function activateToken(txSig: string) {
       );
       fs.writeFileSync(envPath, envContent);
       console.log('\n✅ .env file updated!');
+      console.log(`   TXLINE_API_TOKEN=${apiToken.substring(0, 50)}...`);
     }
+    
+    console.log('\n📝 Next Steps:');
+    console.log('   1. Restart backend: npm run dev');
+    console.log('   2. Test API: curl -H "Authorization: Bearer JWT" -H "X-Api-Token: TOKEN" https://txline.txodds.com/api/scores/snapshot/17952170');
+    console.log('   3. Test SSE: curl -H "Authorization: Bearer JWT" -H "X-Api-Token: TOKEN" https://txline.txodds.com/api/scores/stream');
 
   } catch (error: any) {
     console.error('\n❌ Activation failed:', error.response?.data || error.message);
+    if (error.response?.status === 403) {
+      console.log('\n⚠️  403 Forbidden - Common causes:');
+      console.log('   - pricing_matrix PDA not initialized (contact TxODDS support)');
+      console.log('   - Invalid txSig (make sure subscription tx succeeded)');
+      console.log('   - Wallet mismatch (use same wallet for subscribe + activate)');
+    }
     process.exit(1);
   }
 }

@@ -4,6 +4,8 @@
  * According to docs: No TxL tokens required, just register on-chain
  * 
  * Usage: npx tsx scripts/subscribe-free-tier.ts
+ * 
+ * Updated: 2026-06-30 - Based on txodds/tx-on-chain repo examples
  */
 
 import * as anchor from "@coral-xyz/anchor";
@@ -27,6 +29,17 @@ const RPC_URL = "https://api.mainnet-beta.solana.com";
 const SERVICE_LEVEL_ID = 12; // Real-time World Cup data
 const DURATION_WEEKS = 4; // 4 weeks
 const SELECTED_LEAGUES: number[] = []; // Empty for standard bundle
+
+// PDAs from TxLINE docs
+const PRICING_MATRIX_PDA = PublicKey.findProgramAddressSync(
+  [Buffer.from("pricing_matrix")],
+  TXLINE_PROGRAM_ID
+)[0];
+
+const TOKEN_TREASURY_V2_PDA = PublicKey.findProgramAddressSync(
+  [Buffer.from("token_treasury_v2")],
+  TXLINE_PROGRAM_ID
+)[0];
 
 async function main() {
   console.log("🌍 TxLINE FREE Tier Subscription (Service Level 12)");
@@ -68,28 +81,19 @@ async function main() {
   console.log("\n🚀 Sending subscription transaction...");
 
   try {
-    // Try the subscription - docs show pricing_matrix is required
+    // Subscribe on-chain following TxLINE docs workflow
+    // Required accounts: pricing_matrix + token_treasury_v2
     const txSig = await program.methods
-      .subscribe(SERVICE_LEVEL_ID, DURATION_WEEKS)
+      .subscribe(new anchor.BN(SERVICE_LEVEL_ID), new anchor.BN(DURATION_WEEKS))
       .accounts({
         user: wallet.publicKey,
-        pricingMatrix: new PublicKey("HPjtXsXRYAdBppSMzsqGGDTuhUQT7aXtsbn52CjhgRM7"),
+        pricingMatrix: PRICING_MATRIX_PDA,
+        tokenTreasuryV2: TOKEN_TREASURY_V2_PDA,
         tokenMint: SUBSCRIPTION_TOKEN_MINT,
         userTokenAccount: await anchor.utils.token.associatedAddress({
           mint: SUBSCRIPTION_TOKEN_MINT,
           owner: wallet.publicKey,
         }),
-        tokenTreasuryVault: await anchor.utils.token.associatedAddress({
-          mint: SUBSCRIPTION_TOKEN_MINT,
-          owner: PublicKey.findProgramAddressSync(
-            [Buffer.from("token_treasury"), SUBSCRIPTION_TOKEN_MINT.toBuffer()],
-            TXLINE_PROGRAM_ID
-          )[0],
-        }),
-        tokenTreasuryPda: PublicKey.findProgramAddressSync(
-          [Buffer.from("token_treasury"), SUBSCRIPTION_TOKEN_MINT.toBuffer()],
-          TXLINE_PROGRAM_ID
-        )[0],
         tokenProgram: TOKEN_2022_PROGRAM_ID,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,

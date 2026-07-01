@@ -65,6 +65,7 @@ app.get('/health', (req, res) => {
 
 /**
  * Get live/upcoming matches from TxLINE
+ * Query params: competitionId (optional) - filter by specific competition
  */
 app.get('/api/matches', async (req, res) => {
   try {
@@ -102,7 +103,8 @@ app.get('/api/matches', async (req, res) => {
     }
 
     // Fetch from TxLINE
-    const fixtures = await txlineClient.getLiveFixtures();
+    const competitionId = req.query.competitionId ? parseInt(req.query.competitionId as string) : undefined;
+    const fixtures = await txlineClient.getFixtureSnapshot(competitionId);
     res.json({ matches: fixtures, source: 'txline' });
   } catch (error: any) {
     console.error('Failed to fetch matches:', error.message);
@@ -124,12 +126,85 @@ app.get('/api/matches/:fixtureId', async (req, res) => {
       return res.status(400).json({ error: 'TxLINE not configured' });
     }
 
-    const fixture = await txlineClient.getFixtureSnapshot(fixtureId);
+    // Get all fixtures and find the matching one
+    const fixtures = await txlineClient.getFixtureSnapshot();
+    const fixture = fixtures.find(f => f.fixtureId === fixtureId);
+    
+    if (!fixture) {
+      return res.status(404).json({ error: 'Fixture not found' });
+    }
+    
     res.json({ match: fixture });
   } catch (error: any) {
     console.error('Failed to fetch match details:', error.message);
     res.status(500).json({ 
       error: 'Failed to fetch match details',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * Get odds snapshot for a fixture
+ */
+app.get('/api/odds/:fixtureId', async (req, res) => {
+  try {
+    const fixtureId = parseInt(req.params.fixtureId);
+    
+    if (!process.env.TXLINE_API_TOKEN) {
+      return res.status(400).json({ error: 'TxLINE not configured' });
+    }
+
+    const odds = await txlineClient.getOddsSnapshot(fixtureId);
+    res.json({ odds, source: 'txline' });
+  } catch (error: any) {
+    console.error('Failed to fetch odds:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to fetch odds',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * Get scores snapshot for a fixture
+ */
+app.get('/api/scores/:fixtureId', async (req, res) => {
+  try {
+    const fixtureId = parseInt(req.params.fixtureId);
+    
+    if (!process.env.TXLINE_API_TOKEN) {
+      return res.status(400).json({ error: 'TxLINE not configured' });
+    }
+
+    const scores = await txlineClient.getScoresSnapshot(fixtureId);
+    res.json({ scores, source: 'txline' });
+  } catch (error: any) {
+    console.error('Failed to fetch scores:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to fetch scores',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * Get historical scores for a fixture
+ */
+app.get('/api/scores/historical/:fixtureId', async (req, res) => {
+  try {
+    const fixtureId = parseInt(req.params.fixtureId);
+    
+    if (!process.env.TXLINE_API_TOKEN) {
+      return res.status(400).json({ error: 'TxLINE not configured' });
+    }
+
+    const scores = await txlineClient.getHistoricalScores(fixtureId);
+    res.json({ scores, source: 'txline' });
+  } catch (error: any) {
+    console.error('Failed to fetch historical scores:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to fetch historical scores',
       message: error.message,
     });
   }

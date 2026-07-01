@@ -254,29 +254,64 @@ export class TxLINEClient {
   /**
    * Get fixture snapshot (match details)
    */
-  async getFixtureSnapshot(fixtureId: number): Promise<FixtureSnapshot> {
-    const response = await this.client.get(`/api/fixtures/snapshot`, {
-      params: { fixtureId },
-    });
-    return response.data as FixtureSnapshot;
+  /**
+   * Get fixtures snapshot
+   * @param competitionId - Optional competition ID to filter fixtures
+   */
+  async getFixtureSnapshot(competitionId?: number): Promise<FixtureSnapshot[]> {
+    const params: Record<string, any> = {};
+    if (competitionId) {
+      params.competitionId = competitionId;
+    }
+    const response = await this.client.get('/api/fixtures/snapshot', { params });
+    return response.data as FixtureSnapshot[];
   }
 
   /**
-   * Get all live fixtures
+   * Get all fixtures (alias for getFixtureSnapshot without params)
    */
   async getLiveFixtures(): Promise<FixtureSnapshot[]> {
-    const response = await this.client.get('/api/fixtures/snapshot');
-    return response.data as FixtureSnapshot[];
+    return this.getFixtureSnapshot();
   }
 
   /**
-   * Get upcoming fixtures for a league
+   * Get odds snapshot for a specific fixture
    */
-  async getUpcomingFixtures(leagueId: number, limit: number = 20): Promise<FixtureSnapshot[]> {
-    const response = await this.client.get('/api/fixtures/upcoming', {
-      params: { leagueId, limit },
-    });
-    return response.data as FixtureSnapshot[];
+  async getOddsSnapshot(fixtureId: number): Promise<any[]> {
+    const response = await this.client.get(`/api/odds/snapshot/${fixtureId}`);
+    return response.data as any[];
+  }
+
+  /**
+   * Get odds updates for a specific time period
+   */
+  async getOddsUpdates(epochDay: number, hourOfDay: number, interval: number): Promise<any[]> {
+    const response = await this.client.get(`/api/odds/updates/${epochDay}/${hourOfDay}/${interval}`);
+    return response.data as any[];
+  }
+
+  /**
+   * Get scores snapshot for a specific fixture
+   */
+  async getScoresSnapshot(fixtureId: number): Promise<any[]> {
+    const response = await this.client.get(`/api/scores/snapshot/${fixtureId}`);
+    return response.data as any[];
+  }
+
+  /**
+   * Get scores updates for a specific fixture
+   */
+  async getScoresUpdates(fixtureId: number): Promise<any[]> {
+    const response = await this.client.get(`/api/scores/updates/${fixtureId}`);
+    return response.data as any[];
+  }
+
+  /**
+   * Get historical scores for a fixture (available for fixtures started between 2 weeks and 6 hours ago)
+   */
+  async getHistoricalScores(fixtureId: number): Promise<any[]> {
+    const response = await this.client.get(`/api/scores/historical/${fixtureId}`);
+    return response.data as any[];
   }
 
   /**

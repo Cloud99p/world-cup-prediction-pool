@@ -193,6 +193,16 @@ export class TxLINEClient {
   }
 
   /**
+   * Get historical scores for a fixture (COMPLETE SEQUENCE)
+   * GET /api/scores/historical/{fixtureId}
+   * Per TxLINE docs: Returns data for fixtures started between 2 weeks and 6 hours ago
+   */
+  async getScoresHistorical(fixtureId: number): Promise<ScoreUpdate[]> {
+    const response = await this.client.get(`/api/scores/historical/${fixtureId}`);
+    return response.data as ScoreUpdate[];
+  }
+
+  /**
    * Get live scores updates for a fixture
    * GET /api/scores/updates/{fixtureId}
    */

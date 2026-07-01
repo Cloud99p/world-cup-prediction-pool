@@ -122,11 +122,12 @@ app.get('/api/scores/stream', async (req, res) => {
           try {
             console.log(`🔍 Fetching scores for fixture ${fixture.FixtureId}: ${fixture.Participant1} vs ${fixture.Participant2}`);
             
-            // Fetch actual scores from TxLINE
-            const scores = await txlineClient.getScoresSnapshot(fixture.FixtureId);
+            // Fetch historical scores from TxLINE (correct endpoint per docs)
+            const scores = await txlineClient.getScoresHistorical(fixture.FixtureId);
             console.log(`📊 TxLINE returned ${scores?.length || 0} score updates`);
             
-            const latestScore = scores?.[0];
+            // Get the LATEST score update (last in array)
+            const latestScore = scores?.[scores.length - 1];
             console.log(`📊 Latest score: Home=${latestScore?.HomeScore}, Away=${latestScore?.AwayScore}, State=${latestScore?.GameState}`);
             
             const data = {

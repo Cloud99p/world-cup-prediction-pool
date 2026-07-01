@@ -54,10 +54,16 @@ export interface Match {
 export interface MatchFixture {
   fixtureId: number;
   leagueId: number;
+  league?: string;
   homeTeam: string;
   awayTeam: string;
   startTime: number;
   status: 'scheduled' | 'live' | 'finished' | 'cancelled';
+  odds?: {
+    HomeWin: number;
+    Draw: number;
+    AwayWin: number;
+  };
   homeScore?: number;
   awayScore?: number;
   period?: string;

@@ -98,25 +98,37 @@ export default function MatchCard({ match }: MatchCardProps) {
         </div>
       </div>
 
-      {/* Outcomes - Demo buttons */}
+      {/* Outcomes with Live Odds */}
       <div className="grid grid-cols-3 gap-3">
-        {['Home Win', 'Draw', 'Away Win'].map((outcomeType) => (
-          <button
-            key={outcomeType}
-            onClick={() => handleOutcomeClick(outcomeType, 2.0)}
-            className={`p-4 rounded-lg border-2 transition-all ${
-              selectedOutcome === outcomeType
-                ? 'border-primary bg-primary/20'
-                : 'border-gray-600 hover:border-gray-500'
-            }`}
-          >
-            <div className="text-sm text-gray-400 mb-1">{outcomeType}</div>
-            <div className="text-xl font-bold text-white">2.00</div>
-            <div className="text-xs text-gray-500 mt-1">
-              Demo odds
-            </div>
-          </button>
-        ))}
+        {[
+          { type: 'Home Win', odds: match.odds?.HomeWin || 0 },
+          { type: 'Draw', odds: match.odds?.Draw || 0 },
+          { type: 'Away Win', odds: match.odds?.AwayWin || 0 },
+        ].map((outcome) => {
+          const hasOdds = outcome.odds > 0;
+          return (
+            <button
+              key={outcome.type}
+              onClick={() => hasOdds && handleOutcomeClick(outcome.type, outcome.odds)}
+              disabled={!hasOdds}
+              className={`p-4 rounded-lg border-2 transition-all ${
+                !hasOdds
+                  ? 'border-gray-700 opacity-50 cursor-not-allowed'
+                  : selectedOutcome === outcome.type
+                  ? 'border-primary bg-primary/20'
+                  : 'border-gray-600 hover:border-gray-500'
+              }`}
+            >
+              <div className="text-sm text-gray-400 mb-1">{outcome.type}</div>
+              <div className="text-xl font-bold text-white">
+                {hasOdds ? outcome.odds.toFixed(2) : '--'}
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                {hasOdds ? 'Live odds' : 'No odds'}
+              </div>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

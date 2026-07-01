@@ -107,8 +107,8 @@ export default function Home() {
         </div>
 
         {/* Navigation Tabs - Bet9ja Style */}
-        <div className="bg-gray-800/80 backdrop-blur-sm rounded-lg p-4 mb-6 border border-gray-700">
-          <div className="flex items-center space-x-3 overflow-x-auto">
+        <div className="bg-gray-800/80 backdrop-blur-sm rounded-lg p-2 mb-6 border border-gray-700 overflow-hidden">
+          <div className="flex items-center space-x-2 overflow-x-auto">
             {/* Live Tab */}
             <button
               onClick={() => setActiveTab('live')}

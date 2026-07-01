@@ -248,54 +248,65 @@ app.get('/api/matches/:fixtureId', async (req, res) => {
  */
 app.get('/api/matches/live', async (req, res) => {
   try {
+    console.log('🔍 Fetching live matches...');
+    
     if (!process.env.TXLINE_API_TOKEN) {
+      console.log('❌ TxLINE API token not configured');
       return res.status(400).json({ error: 'TxLINE not configured' });
     }
 
+    // Get all fixtures
+    console.log('📡 Fetching fixtures from TxLINE...');
     const fixtures = await txlineClient.getFixtures();
+    console.log(`📊 Got ${fixtures.length} fixtures`);
     
     // Filter to only live matches
-    const liveFixtures = fixtures.filter((f: any) => {
+    const liveFixtures = [];
+    for (const f of fixtures) {
       try {
         const status = mapTxLINEStatus(f.Status, f.StartTime);
-        return status === 'live';
-      } catch (error) {
-        return false; // Skip if can't determine status
+        if (status === 'live') {
+          liveFixtures.push(f);
+        }
+      } catch (error: any) {
+        console.log(`⚠️ Error checking status for fixture ${f.FixtureId}: ${error.message}`);
       }
-    });
+    }
     
-    console.log(`🔴 Found ${liveFixtures.length} live matches out of ${fixtures.length} total`);
+    console.log(`🔴 Found ${liveFixtures.length} live matches`);
     
-    // Transform and enrich with odds
-    const transformed = await Promise.all(
-      liveFixtures.map(async (fixture) => {
+    // Transform fixtures
+    const transformed = [];
+    for (const fixture of liveFixtures) {
+      try {
+        const base = transformFixture(fixture);
+        
+        // Try to get odds
         try {
-          const base = transformFixture(fixture);
           const txlineOdds = await txlineClient.getOddsSnapshot(fixture.FixtureId);
           const odds = transformOdds(txlineOdds);
-          return { ...base, odds };
-        } catch (error: any) {
+          transformed.push({ ...base, odds });
+        } catch (oddsError: any) {
           console.log(`⚠️ No odds for fixture ${fixture.FixtureId}`);
-          return { 
-            fixtureId: fixture.FixtureId,
-            leagueId: fixture.CompetitionId,
-            league: fixture.Competition || 'Unknown',
-            homeTeam: fixture.Participant1IsHome ? fixture.Participant1 : fixture.Participant2,
-            awayTeam: fixture.Participant1IsHome ? fixture.Participant2 : fixture.Participant1,
-            startTime: fixture.StartTime,
-            status: 'live' as const,
+          transformed.push({ 
+            ...base, 
             odds: { HomeWin: 0, Draw: 0, AwayWin: 0, Over2_5: 0, Under2_5: 0 } 
-          };
+          });
         }
-      })
-    );
+      } catch (transformError: any) {
+        console.log(`⚠️ Error transforming fixture ${fixture.FixtureId}: ${transformError.message}`);
+      }
+    }
     
+    console.log(`✅ Returning ${transformed.length} live matches`);
     res.json({ matches: transformed, source: 'txline', count: transformed.length });
   } catch (error: any) {
-    console.error('❌ Failed to fetch live matches:', error.message);
+    console.error('❌ CRITICAL ERROR in /api/matches/live:', error);
+    console.error('Stack:', error.stack);
     res.status(500).json({ 
       error: 'Failed to fetch live matches',
       message: error.message,
+      stack: error.stack,
     });
   }
 });

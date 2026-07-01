@@ -164,9 +164,9 @@ function transformOdds(txlineOdds: any[]) {
 }
 
 /**
- * Get all matches with odds
+ * Get upcoming matches (sorted by start time: nearest first)
  */
-app.get('/api/matches', async (req, res) => {
+app.get('/api/matches/upcoming', async (req, res) => {
   try {
     if (!process.env.TXLINE_API_TOKEN) {
       return res.status(400).json({ error: 'TxLINE not configured' });
@@ -174,9 +174,18 @@ app.get('/api/matches', async (req, res) => {
 
     const fixtures = await txlineClient.getFixtures();
     
-    // Transform fixtures to frontend format
+    // Filter for scheduled/upcoming matches
+    const upcomingMatches = fixtures.filter((fixture: any) => {
+      const status = mapTxLINEStatus(fixture.Status, fixture.StartTime);
+      return status === 'scheduled';
+    });
+    
+    // Sort by start time (nearest first)
+    upcomingMatches.sort((a: any, b: any) => a.StartTime - b.StartTime);
+    
+    // Transform and fetch odds for upcoming matches
     const matches = await Promise.all(
-      fixtures.map(async (fixture: any) => {
+      upcomingMatches.map(async (fixture: any) => {
         const odds = await txlineClient.getOddsSnapshot(fixture.FixtureId);
         return {
           ...transformFixture(fixture),
@@ -187,9 +196,9 @@ app.get('/api/matches', async (req, res) => {
     
     res.json({ matches, count: matches.length, source: 'txline' });
   } catch (error: any) {
-    console.error('Failed to fetch matches:', error.message);
+    console.error('Failed to fetch upcoming matches:', error.message);
     res.status(500).json({ 
-      error: 'Failed to fetch matches',
+      error: 'Failed to fetch upcoming matches',
       message: error.message,
     });
   }
@@ -234,7 +243,7 @@ app.get('/api/matches/live', async (req, res) => {
 });
 
 /**
- * Get previous/finished matches (MUST come before /:fixtureId)
+ * Get previous/finished matches with scores (MUST come before /:fixtureId)
  */
 app.get('/api/matches/previous', async (req, res) => {
   try {
@@ -250,25 +259,22 @@ app.get('/api/matches/previous', async (req, res) => {
       return status === 'finished';
     });
     
-    // Sort by start time (most recent first)
+    // Sort by most recent first
     finishedMatches.sort((a: any, b: any) => b.StartTime - a.StartTime);
     
-    // Transform and fetch scores for finished matches
+    // Transform and fetch final scores for finished matches
     const matches = await Promise.all(
       finishedMatches.map(async (fixture: any) => {
         try {
-          const odds = await txlineClient.getOddsSnapshot(fixture.FixtureId).catch(() => []);
           const scores = await txlineClient.getScoresSnapshot(fixture.FixtureId).catch(() => []);
           return {
             ...transformFixture(fixture),
-            odds: transformOdds(odds),
             scores: scores[0] || null,
           };
         } catch (err: any) {
           console.error(`Failed to fetch data for fixture ${fixture.FixtureId}:`, err.message);
           return {
             ...transformFixture(fixture),
-            odds: null,
             scores: null,
           };
         }

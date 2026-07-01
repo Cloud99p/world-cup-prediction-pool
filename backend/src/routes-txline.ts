@@ -22,8 +22,12 @@ app.get('/api/odds/stream', async (req, res) => {
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no');
+    res.setHeader('Access-Control-Allow-Origin', '*');
     
     console.log('📡 Opening SSE odds stream...');
+    
+    // Flush headers immediately
+    res.flushHeaders();
     
     // Send initial connection confirmation
     res.write(`data: ${JSON.stringify({ type: 'connected', message: 'Odds stream connected' })}\n\n`);
@@ -88,8 +92,12 @@ app.get('/api/scores/stream', async (req, res) => {
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no');
+    res.setHeader('Access-Control-Allow-Origin', '*');
     
     console.log('⚽ Opening SSE scores stream...');
+    
+    // Flush headers immediately
+    res.flushHeaders();
     
     // Send initial connection confirmation
     res.write(`data: ${JSON.stringify({ type: 'connected', message: 'Scores stream connected' })}\n\n`);
@@ -112,9 +120,14 @@ app.get('/api/scores/stream', async (req, res) => {
         
         for (const fixture of liveFixtures) {
           try {
+            console.log(`🔍 Fetching scores for fixture ${fixture.FixtureId}: ${fixture.Participant1} vs ${fixture.Participant2}`);
+            
             // Fetch actual scores from TxLINE
             const scores = await txlineClient.getScoresSnapshot(fixture.FixtureId);
-            const latestScore = scores[0];
+            console.log(`📊 TxLINE returned ${scores?.length || 0} score updates`);
+            
+            const latestScore = scores?.[0];
+            console.log(`📊 Latest score: Home=${latestScore?.HomeScore}, Away=${latestScore?.AwayScore}, State=${latestScore?.GameState}`);
             
             const data = {
               type: 'score_update',
@@ -127,7 +140,7 @@ app.get('/api/scores/stream', async (req, res) => {
             console.log(`⚽ Score update: ${fixture.Participant1} ${data.homeScore}-${data.awayScore} ${fixture.Participant2}`);
             res.write(`data: ${JSON.stringify(data)}\n\n`);
           } catch (scoreError: any) {
-            // Ignore individual fixture score errors
+            console.log(`❌ Score fetch error for ${fixture.FixtureId}:`, scoreError.message);
           }
         }
       } catch (error: any) {

@@ -32,6 +32,12 @@ const txlineClient = new TxLINEClient({
   apiToken: process.env.TXLINE_API_TOKEN,
 });
 
+// Debug: Log auth status on startup
+console.log('🔑 TxLINE Auth Status:');
+console.log('   JWT:', process.env.TXLINE_JWT ? `✅ Set (${process.env.TXLINE_JWT.substring(0, 20)}...)` : '❌ Missing');
+console.log('   API Token:', process.env.TXLINE_API_TOKEN ? `✅ Set (${process.env.TXLINE_API_TOKEN})` : '❌ Missing');
+console.log('   Base URL:', process.env.TXLINE_BASE_URL || 'https://txline.txodds.com');
+
 // Initialize Keeper Bot (if enabled)
 let keeperBot: KeeperBot | null = null;
 

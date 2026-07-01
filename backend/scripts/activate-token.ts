@@ -30,7 +30,7 @@ async function activateToken(txSig: string) {
 
   // Step 1: Get fresh JWT
   console.log('\n📡 Getting guest JWT...');
-  const authResponse = await axios.post('https://txline.txodds.com/api/auth/guest/start');
+  const authResponse = await axios.post('https://txline.txodds.com/auth/guest/start');
   const jwt = authResponse.data.token;
   console.log('✅ JWT received:', jwt.substring(0, 50) + '...');
 
@@ -53,7 +53,7 @@ async function activateToken(txSig: string) {
   try {
     // Following official docs: https://txline.txodds.com/documentation/worldcup
     const activationResponse = await axios.post(
-      'https://txline.txodds.com/api/token/activate',
+      'https://txline.txodds.com/token/activate',
       {
         txSig,
         walletSignature,

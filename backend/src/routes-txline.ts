@@ -1,4 +1,14 @@
 /**
+ * TxLINE API Routes - Official Implementation
+ * Order matters! Most specific routes FIRST, generic routes LAST
+ */
+
+import { Express } from 'express';
+import TxLINEClient from './txline-client.js';
+
+export function registerTxLINERoutes(app: Express, txlineClient: TxLINEClient) {
+
+/**
  * ==================== ODDS ENDPOINTS ====================
  * Order matters! Most specific routes FIRST, generic routes LAST
  */
@@ -322,3 +332,5 @@ app.get('/api/fixtures/updates/:epochDay/:hourOfDay', async (req, res) => {
     });
   }
 });
+
+} // End of registerTxLINERoutes

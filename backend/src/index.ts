@@ -15,6 +15,7 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import TxLINEClient from './txline-client.js';
 import KeeperBot from './keeper-bot.js';
+import { registerTxLINERoutes } from './routes-txline.js';
 
 dotenv.config();
 
@@ -63,6 +64,9 @@ if (process.env.ENABLE_KEEPER_BOT === 'true') {
 }
 
 // ==================== REST API Routes ====================
+
+// Register TxLINE routes (properly ordered to avoid 404 errors)
+registerTxLINERoutes(app, txlineClient);
 
 /**
  * Health check

@@ -28,6 +28,11 @@ app.get('/api/odds/stream', async (req, res) => {
     // Send initial connection confirmation
     res.write(`data: ${JSON.stringify({ type: 'connected', message: 'Odds stream connected' })}\n\n`);
     
+    // Send heartbeat every 2 seconds to keep connection alive
+    const heartbeatInterval = setInterval(() => {
+      res.write(`data: ${JSON.stringify({ type: 'heartbeat', timestamp: Date.now() })}\n\n`);
+    }, 2000);
+    
     // Poll for odds updates every 5 seconds (fallback since TxLINE SSE is unavailable)
     const pollInterval = setInterval(async () => {
       try {
@@ -40,27 +45,32 @@ app.get('/api/odds/stream', async (req, res) => {
         });
         
         for (const fixture of liveFixtures) {
-          const odds = await txlineClient.getOddsSnapshot(fixture.FixtureId);
-          const overUnder = odds.find((o: any) => o.Market?.includes('Over/Under 2.5'));
-          if (overUnder) {
-            const data = {
-              type: 'odds_update',
-              fixtureId: fixture.FixtureId,
-              marketType: 'Over/Under 2.5',
-              odds: [overUnder.Outcomes?.[0]?.Price ?? 0, overUnder.Outcomes?.[1]?.Price ?? 0],
-              timestamp: Date.now(),
-            };
-            res.write(`data: ${JSON.stringify(data)}\n\n`);
+          try {
+            const odds = await txlineClient.getOddsSnapshot(fixture.FixtureId);
+            const overUnder = odds.find((o: any) => o.Market?.includes('Over/Under 2.5'));
+            if (overUnder) {
+              const data = {
+                type: 'odds_update',
+                fixtureId: fixture.FixtureId,
+                marketType: 'Over/Under 2.5',
+                odds: [overUnder.Outcomes?.[0]?.Price ?? 0, overUnder.Outcomes?.[1]?.Price ?? 0],
+                timestamp: Date.now(),
+              };
+              res.write(`data: ${JSON.stringify(data)}\n\n`);
+            }
+          } catch (oddsError: any) {
+            // Ignore individual fixture odds errors
           }
         }
       } catch (error: any) {
-        // Silently ignore polling errors
+        console.log('⚠️ Odds polling error:', error.message);
       }
     }, 5000);
     
     req.on('close', () => {
       console.log('🔌 Client disconnected from odds stream');
       clearInterval(pollInterval);
+      clearInterval(heartbeatInterval);
     });
     
   } catch (error: any) {
@@ -83,6 +93,11 @@ app.get('/api/scores/stream', async (req, res) => {
     
     // Send initial connection confirmation
     res.write(`data: ${JSON.stringify({ type: 'connected', message: 'Scores stream connected' })}\n\n`);
+    
+    // Send heartbeat every 2 seconds to keep connection alive
+    const heartbeatInterval = setInterval(() => {
+      res.write(`data: ${JSON.stringify({ type: 'heartbeat', timestamp: Date.now() })}\n\n`);
+    }, 2000);
     
     // Poll for score updates every 5 seconds (fallback since TxLINE SSE is unavailable)
     const pollInterval = setInterval(async () => {
@@ -109,19 +124,21 @@ app.get('/api/scores/stream', async (req, res) => {
               gameState: latestScore?.GameState || fixture.Status || 'live',
               timestamp: Date.now(),
             };
+            console.log(`⚽ Score update: ${fixture.Participant1} ${data.homeScore}-${data.awayScore} ${fixture.Participant2}`);
             res.write(`data: ${JSON.stringify(data)}\n\n`);
           } catch (scoreError: any) {
             // Ignore individual fixture score errors
           }
         }
       } catch (error: any) {
-        // Silently ignore polling errors
+        console.log('⚠️ Score polling error:', error.message);
       }
     }, 5000);
     
     req.on('close', () => {
       console.log('🔌 Client disconnected from scores stream');
       clearInterval(pollInterval);
+      clearInterval(heartbeatInterval);
     });
     
   } catch (error: any) {

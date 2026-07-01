@@ -48,10 +48,8 @@ export function useLiveScores({ fixtureId, enabled = true, onScoreUpdate }: UseL
     if (!enabled) return;
 
     try {
-      const url = new URL(`${BACKEND_URL}/stream/scores`);
-      if (fixtureId) {
-        url.searchParams.set('fixtureId', fixtureId.toString());
-      }
+      const url = new URL(`${BACKEND_URL}/api/scores/stream`);
+      // Note: /api/scores/stream doesn't support fixtureId filter, streams all live matches
 
       const eventSource = new EventSource(url.toString());
 

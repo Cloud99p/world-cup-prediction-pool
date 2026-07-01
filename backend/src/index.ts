@@ -164,51 +164,28 @@ function transformOdds(txlineOdds: any[]) {
 }
 
 /**
- * Get live/upcoming matches from TxLINE with odds
- * Query params: competitionId (optional) - filter by specific competition
+ * Get all matches with odds
  */
 app.get('/api/matches', async (req, res) => {
   try {
-    // For demo: return mock data if TxLINE not configured
     if (!process.env.TXLINE_API_TOKEN) {
-      return res.json({
-        matches: [
-          {
-            fixtureId: 17952170,
-            leagueId: 1,
-            homeTeam: 'Brazil',
-            awayTeam: 'Germany',
-            startTime: Date.now() + 3600000,
-            status: 'scheduled' as const,
-            odds: { HomeWin: 2.0, Draw: 3.0, AwayWin: 2.5 },
-          },
-        ],
-        source: 'demo',
-      });
+      return res.status(400).json({ error: 'TxLINE not configured' });
     }
 
-    // Fetch from TxLINE - Official API
-    const competitionId = req.query.competitionId ? parseInt(req.query.competitionId as string) : undefined;
-    const fixtures = await txlineClient.getFixtures(competitionId);
+    const fixtures = await txlineClient.getFixtures();
     
-    // Transform and enrich with odds
-    const transformed = await Promise.all(
-      fixtures.map(async (fixture) => {
-        const base = transformFixture(fixture);
-        
-        // Fetch odds for this fixture
-        try {
-          const txlineOdds = await txlineClient.getOddsSnapshot(fixture.FixtureId);
-          const odds = transformOdds(txlineOdds);
-          return { ...base, odds };
-        } catch (error) {
-          // No odds available, use defaults
-          return { ...base, odds: { HomeWin: 0, Draw: 0, AwayWin: 0 } };
-        }
+    // Transform fixtures to frontend format
+    const matches = await Promise.all(
+      fixtures.map(async (fixture: any) => {
+        const odds = await txlineClient.getOddsSnapshot(fixture.FixtureId);
+        return {
+          ...transformFixture(fixture),
+          odds: transformOdds(odds),
+        };
       })
     );
     
-    res.json({ matches: transformed, source: 'txline' });
+    res.json({ matches, count: matches.length, source: 'txline' });
   } catch (error: any) {
     console.error('Failed to fetch matches:', error.message);
     res.status(500).json({ 
@@ -219,7 +196,7 @@ app.get('/api/matches', async (req, res) => {
 });
 
 /**
- * Get match details by fixture ID
+ * Get single match details
  */
 app.get('/api/matches/:fixtureId', async (req, res) => {
   try {
@@ -229,27 +206,22 @@ app.get('/api/matches/:fixtureId', async (req, res) => {
       return res.status(400).json({ error: 'TxLINE not configured' });
     }
 
-    // Get all fixtures and find the matching one
     const fixtures = await txlineClient.getFixtures();
     const fixture = fixtures.find((f: any) => f.FixtureId === fixtureId);
     
     if (!fixture) {
       return res.status(404).json({ error: 'Fixture not found' });
     }
+
+    const odds = await txlineClient.getOddsSnapshot(fixtureId);
+    const scores = await txlineClient.getScoresSnapshot(fixtureId);
     
-    // Transform to frontend format
-    const transformed = transformFixture(fixture);
-    
-    // Try to add odds
-    try {
-      const txlineOdds = await txlineClient.getOddsSnapshot(fixture.FixtureId);
-      const odds = transformOdds(txlineOdds);
-      transformed.odds = odds;
-    } catch (error) {
-      transformed.odds = { HomeWin: 0, Draw: 0, AwayWin: 0, Over2_5: 0, Under2_5: 0 };
-    }
-    
-    res.json({ match: transformed });
+    res.json({
+      match: transformFixture(fixture),
+      odds: transformOdds(odds),
+      scores: scores[0] || null,
+      source: 'txline',
+    });
   } catch (error: any) {
     console.error('Failed to fetch match details:', error.message);
     res.status(500).json({ 
@@ -260,99 +232,67 @@ app.get('/api/matches/:fixtureId', async (req, res) => {
 });
 
 /**
- * Get live matches only (Bet9ja-style)
+ * Get live matches only
  */
 app.get('/api/matches/live', async (req, res) => {
   try {
-    console.log('🔍 Fetching live matches...');
-    
     if (!process.env.TXLINE_API_TOKEN) {
-      console.log('❌ TxLINE API token not configured');
       return res.status(400).json({ error: 'TxLINE not configured' });
     }
 
-    // Get all fixtures
-    console.log('📡 Fetching fixtures from TxLINE...');
     const fixtures = await txlineClient.getFixtures();
-    console.log(`📊 Got ${fixtures.length} fixtures`);
     
-    // Filter to only live matches
-    const liveFixtures = [];
-    for (const f of fixtures) {
-      try {
-        const status = mapTxLINEStatus(f.Status, f.StartTime);
-        if (status === 'live') {
-          liveFixtures.push(f);
-        }
-      } catch (error: any) {
-        console.log(`⚠️ Error checking status for fixture ${f.FixtureId}: ${error.message}`);
-      }
-    }
+    // Filter for live matches
+    const liveMatches = fixtures.filter((fixture: any) => {
+      const status = mapTxLINEStatus(fixture.Status, fixture.StartTime);
+      return status === 'live';
+    });
     
-    console.log(`🔴 Found ${liveFixtures.length} live matches`);
+    // Transform and fetch odds for live matches
+    const matches = await Promise.all(
+      liveMatches.map(async (fixture: any) => {
+        const odds = await txlineClient.getOddsSnapshot(fixture.FixtureId);
+        return {
+          ...transformFixture(fixture),
+          odds: transformOdds(odds),
+        };
+      })
+    );
     
-    // Transform fixtures
-    const transformed = [];
-    for (const fixture of liveFixtures) {
-      try {
-        const base = transformFixture(fixture);
-        
-        // Try to get odds
-        try {
-          const txlineOdds = await txlineClient.getOddsSnapshot(fixture.FixtureId);
-          const odds = transformOdds(txlineOdds);
-          transformed.push({ ...base, odds });
-        } catch (oddsError: any) {
-          console.log(`⚠️ No odds for fixture ${fixture.FixtureId}`);
-          transformed.push({ 
-            ...base, 
-            odds: { HomeWin: 0, Draw: 0, AwayWin: 0, Over2_5: 0, Under2_5: 0 } 
-          });
-        }
-      } catch (transformError: any) {
-        console.log(`⚠️ Error transforming fixture ${fixture.FixtureId}: ${transformError.message}`);
-      }
-    }
-    
-    console.log(`✅ Returning ${transformed.length} live matches`);
-    res.json({ matches: transformed, source: 'txline', count: transformed.length });
+    res.json({ matches, count: matches.length, source: 'txline' });
   } catch (error: any) {
-    console.error('❌ CRITICAL ERROR in /api/matches/live:', error);
-    console.error('Stack:', error.stack);
+    console.error('Failed to fetch live matches:', error.message);
     res.status(500).json({ 
       error: 'Failed to fetch live matches',
       message: error.message,
-      stack: error.stack,
     });
   }
 });
 
 /**
- * Get matches by league (Bet9ja-style league filter)
+ * Get matches filtered by league
  */
 app.get('/api/matches/league/:leagueId', async (req, res) => {
   try {
+    const leagueId = parseInt(req.params.leagueId);
+    
     if (!process.env.TXLINE_API_TOKEN) {
       return res.status(400).json({ error: 'TxLINE not configured' });
     }
 
-    const leagueId = parseInt(req.params.leagueId);
     const fixtures = await txlineClient.getFixtures(leagueId);
     
-    const transformed = await Promise.all(
-      fixtures.map(async (fixture) => {
-        const base = transformFixture(fixture);
-        try {
-          const txlineOdds = await txlineClient.getOddsSnapshot(fixture.FixtureId);
-          const odds = transformOdds(txlineOdds);
-          return { ...base, odds };
-        } catch (error) {
-          return { ...base, odds: { HomeWin: 0, Draw: 0, AwayWin: 0, Over2_5: 0, Under2_5: 0 } };
-        }
+    const matches = await Promise.all(
+      fixtures.map(async (fixture: any) => {
+        const odds = await txlineClient.getOddsSnapshot(fixture.FixtureId);
+        return {
+          ...transformFixture(fixture),
+          odds: transformOdds(odds),
+        };
       })
     );
     
-    res.json({ matches: transformed, leagueId, source: 'txline' });
+    res.json({ matches, count: matches.length, source: 'txline' });
   } catch (error: any) {
     console.error('Failed to fetch league matches:', error.message);
     res.status(500).json({ 
@@ -363,7 +303,7 @@ app.get('/api/matches/league/:leagueId', async (req, res) => {
 });
 
 /**
- * Get all available leagues with match counts (Bet9ja-style)
+ * Get all leagues with match counts
  */
 app.get('/api/leagues', async (req, res) => {
   try {
@@ -384,12 +324,10 @@ app.get('/api/leagues', async (req, res) => {
         leagueMap.set(leagueId, { id: leagueId, name: leagueName, count: 0 });
       }
       
-      const league = leagueMap.get(leagueId)!;
-      league.count++;
+      leagueMap.get(leagueId)!.count++;
     }
     
-    const leagues = Array.from(leagueMap.values()).sort((a, b) => b.count - a.count);
-    
+    const leagues = Array.from(leagueMap.values());
     res.json({ leagues, source: 'txline' });
   } catch (error: any) {
     console.error('Failed to fetch leagues:', error.message);
@@ -401,329 +339,7 @@ app.get('/api/leagues', async (req, res) => {
 });
 
 /**
- * Get all odds for all matches
- */
-app.get('/api/odds', async (req, res) => {
-  try {
-    if (!process.env.TXLINE_API_TOKEN) {
-      return res.status(400).json({ error: 'TxLINE not configured' });
-    }
-
-    // Get all fixtures first
-    const fixtures = await txlineClient.getFixtures();
-    
-    // Fetch odds for each fixture
-    const oddsPromises = fixtures.map(async (fixture: any) => {
-      try {
-        const odds = await txlineClient.getOddsSnapshot(fixture.FixtureId);
-        return {
-          fixtureId: fixture.FixtureId,
-          odds: odds || [],
-        };
-      } catch (error: any) {
-        // Some fixtures might not have odds yet
-        return {
-          fixtureId: fixture.FixtureId,
-          odds: [],
-        };
-      }
-    });
-    
-    const allOdds = await Promise.all(oddsPromises);
-    res.json({ odds: allOdds, source: 'txline' });
-  } catch (error: any) {
-    console.error('Failed to fetch odds:', error.message);
-    res.status(500).json({ 
-      error: 'Failed to fetch odds',
-      message: error.message,
-    });
-  }
-});
-
-/**
- * SSE Stream for real-time odds updates (Bet9ja-style live odds)
- * GET /api/odds/stream
- */
-app.get('/api/odds/stream', async (req, res) => {
-  try {
-    // Set SSE headers
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.setHeader('X-Accel-Buffering', 'no');
-    
-    console.log('📡 Opening SSE odds stream...');
-    
-    // Connect to TxLINE SSE stream
-    const stream = txlineClient.connectOddsStream(
-      (oddsUpdate) => {
-        // Forward odds update to frontend clients
-        const data = {
-          type: 'odds_update',
-          fixtureId: oddsUpdate.FixtureId,
-          marketType: oddsUpdate.MarketType,
-          odds: oddsUpdate.Odds,
-          timestamp: oddsUpdate.Ts,
-        };
-        
-        res.write(`data: ${JSON.stringify(data)}\n\n`);
-      },
-      (error) => {
-        console.log('⚠️ SSE stream error:', error.message);
-        res.write(`data: ${JSON.stringify({ type: 'error', message: error.message })}\n\n`);
-      }
-    );
-    
-    // Handle client disconnect
-    req.on('close', () => {
-      console.log('🔌 Client disconnected from odds stream');
-      // Close the SSE connection
-      // Note: EventSource doesn't have a close method, we just stop listening
-    });
-    
-  } catch (error: any) {
-    console.error('❌ Failed to open odds stream:', error.message);
-    res.status(500).json({ 
-      error: 'Failed to open odds stream',
-      message: error.message,
-    });
-  }
-});
-
-/**
- * SSE Stream for real-time scores updates
- * GET /api/scores/stream
- */
-app.get('/api/scores/stream', async (req, res) => {
-  try {
-    // Set SSE headers
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.setHeader('X-Accel-Buffering', 'no');
-    
-    console.log('⚽ Opening SSE scores stream...');
-    
-    // Connect to TxLINE SSE stream
-    const stream = txlineClient.connectScoresStream(
-      (scoreUpdate) => {
-        // Forward score update to frontend clients
-        const data = {
-          type: 'score_update',
-          fixtureId: scoreUpdate.FixtureId,
-          homeScore: scoreUpdate.HomeScore,
-          awayScore: scoreUpdate.AwayScore,
-          gameState: scoreUpdate.GameState,
-          timestamp: scoreUpdate.Ts,
-        };
-        
-        res.write(`data: ${JSON.stringify(data)}\n\n`);
-      },
-      (error) => {
-        console.log('⚠️ SSE scores stream error:', error.message);
-        res.write(`data: ${JSON.stringify({ type: 'error', message: error.message })}\n\n`);
-      }
-    );
-    
-    // Handle client disconnect
-    req.on('close', () => {
-      console.log('🔌 Client disconnected from scores stream');
-    });
-    
-  } catch (error: any) {
-    console.error('❌ Failed to open scores stream:', error.message);
-    res.status(500).json({ 
-      error: 'Failed to open scores stream',
-      message: error.message,
-    });
-  }
-});
-
-/**
- * Get odds snapshot for a specific fixture
- */
-app.get('/api/odds/:fixtureId', async (req, res) => {
-  try {
-    const fixtureId = parseInt(req.params.fixtureId);
-    
-    if (!process.env.TXLINE_API_TOKEN) {
-      return res.status(400).json({ error: 'TxLINE not configured' });
-    }
-
-    const odds = await txlineClient.getOddsSnapshot(fixtureId);
-    res.json({ odds, source: 'txline' });
-  } catch (error: any) {
-    console.error('Failed to fetch odds:', error.message);
-    res.status(500).json({ 
-      error: 'Failed to fetch odds',
-      message: error.message,
-    });
-  }
-});
-
-/**
- * Get scores snapshot for a fixture
- */
-app.get('/api/scores/:fixtureId', async (req, res) => {
-  try {
-    const fixtureId = parseInt(req.params.fixtureId);
-    
-    if (!process.env.TXLINE_API_TOKEN) {
-      return res.status(400).json({ error: 'TxLINE not configured' });
-    }
-
-    const scores = await txlineClient.getScoresSnapshot(fixtureId);
-    res.json({ scores, source: 'txline' });
-  } catch (error: any) {
-    console.error('Failed to fetch scores:', error.message);
-    res.status(500).json({ 
-      error: 'Failed to fetch scores',
-      message: error.message,
-    });
-  }
-});
-
-/**
- * Get historical scores for a fixture
- */
-app.get('/api/scores/historical/:fixtureId', async (req, res) => {
-  try {
-    const fixtureId = parseInt(req.params.fixtureId);
-    
-    if (!process.env.TXLINE_API_TOKEN) {
-      return res.status(400).json({ error: 'TxLINE not configured' });
-    }
-
-    const scores = await txlineClient.getHistoricalScores(fixtureId);
-    res.json({ scores, source: 'txline' });
-  } catch (error: any) {
-    console.error('Failed to fetch historical scores:', error.message);
-    res.status(500).json({ 
-      error: 'Failed to fetch historical scores',
-      message: error.message,
-    });
-  }
-});
-
-/**
- * Get live scores updates for a fixture (TxLINE: /api/scores/updates/{fixtureId})
- */
-app.get('/api/scores/updates/:fixtureId', async (req, res) => {
-  try {
-    const fixtureId = parseInt(req.params.fixtureId);
-    
-    if (!process.env.TXLINE_API_TOKEN) {
-      return res.status(400).json({ error: 'TxLINE not configured' });
-    }
-
-    const scores = await txlineClient.getScoresUpdates(fixtureId);
-    res.json({ scores, source: 'txline' });
-  } catch (error: any) {
-    console.error('Failed to fetch scores updates:', error.message);
-    res.status(500).json({ 
-      error: 'Failed to fetch scores updates',
-      message: error.message,
-    });
-  }
-});
-
-/**
- * Get live odds updates for a fixture (TxLINE: /api/odds/updates/{fixtureId})
- */
-app.get('/api/odds/updates/:fixtureId', async (req, res) => {
-  try {
-    const fixtureId = parseInt(req.params.fixtureId);
-    
-    if (!process.env.TXLINE_API_TOKEN) {
-      return res.status(400).json({ error: 'TxLINE not configured' });
-    }
-
-    const odds = await txlineClient.getOddsUpdates(fixtureId);
-    res.json({ odds, source: 'txline' });
-  } catch (error: any) {
-    console.error('Failed to fetch odds updates:', error.message);
-    res.status(500).json({ 
-      error: 'Failed to fetch odds updates',
-      message: error.message,
-    });
-  }
-});
-
-/**
- * Get fixture updates by time period (TxLINE: /api/fixtures/updates/{epochDay}/{hourOfDay})
- */
-app.get('/api/fixtures/updates/:epochDay/:hourOfDay', async (req, res) => {
-  try {
-    const epochDay = parseInt(req.params.epochDay);
-    const hourOfDay = parseInt(req.params.hourOfDay);
-    
-    if (!process.env.TXLINE_API_TOKEN) {
-      return res.status(400).json({ error: 'TxLINE not configured' });
-    }
-
-    const fixtures = await txlineClient.getFixtureUpdates(epochDay, hourOfDay);
-    res.json({ fixtures, source: 'txline' });
-  } catch (error: any) {
-    console.error('Failed to fetch fixture updates:', error.message);
-    res.status(500).json({ 
-      error: 'Failed to fetch fixture updates',
-      message: error.message,
-    });
-  }
-});
-
-/**
- * Get odds updates by time period (TxLINE: /api/odds/updates/{epochDay}/{hourOfDay}/{interval})
- */
-app.get('/api/odds/updates/:epochDay/:hourOfDay/:interval', async (req, res) => {
-  try {
-    const epochDay = parseInt(req.params.epochDay);
-    const hourOfDay = parseInt(req.params.hourOfDay);
-    const interval = parseInt(req.params.interval);
-    
-    if (!process.env.TXLINE_API_TOKEN) {
-      return res.status(400).json({ error: 'TxLINE not configured' });
-    }
-
-    const fixtureId = req.query.fixtureId ? parseInt(req.query.fixtureId as string) : undefined;
-    const odds = await txlineClient.getOddsUpdatesByInterval(epochDay, hourOfDay, interval, fixtureId);
-    res.json({ odds, source: 'txline' });
-  } catch (error: any) {
-    console.error('Failed to fetch odds updates by interval:', error.message);
-    res.status(500).json({ 
-      error: 'Failed to fetch odds updates by interval',
-      message: error.message,
-    });
-  }
-});
-
-/**
- * Get scores updates by time period (TxLINE: /api/scores/updates/{epochDay}/{hourOfDay}/{interval})
- */
-app.get('/api/scores/updates/:epochDay/:hourOfDay/:interval', async (req, res) => {
-  try {
-    const epochDay = parseInt(req.params.epochDay);
-    const hourOfDay = parseInt(req.params.hourOfDay);
-    const interval = parseInt(req.params.interval);
-    
-    if (!process.env.TXLINE_API_TOKEN) {
-      return res.status(400).json({ error: 'TxLINE not configured' });
-    }
-
-    const fixtureId = req.query.fixtureId ? parseInt(req.query.fixtureId as string) : undefined;
-    const scores = await txlineClient.getScoresUpdatesByInterval(epochDay, hourOfDay, interval, fixtureId);
-    res.json({ scores, source: 'txline' });
-  } catch (error: any) {
-    console.error('Failed to fetch scores updates by interval:', error.message);
-    res.status(500).json({ 
-      error: 'Failed to fetch scores updates by interval',
-      message: error.message,
-    });
-  }
-});
-
-/**
- * Get active pools
+ * Get pools (placeholder - implement on-chain later)
  */
 app.get('/api/pools', async (req, res) => {
   try {
@@ -770,131 +386,52 @@ app.get('/api/pools/:fixtureId', async (req, res) => {
 });
 
 /**
- * Get live odds for a fixture
- */
-app.get('/api/odds/:fixtureId', async (req, res) => {
-  try {
-    const { fixtureId } = req.params;
-    const odds = await txlineClient.getLiveOdds(parseInt(fixtureId));
-    res.json(odds);
-  } catch (error) {
-    console.error('Error fetching odds:', error);
-    res.status(500).json({ error: 'Failed to fetch odds' });
-  }
-});
-
-/**
- * Get score snapshot
- */
-app.get('/api/scores/:fixtureId', async (req, res) => {
-  try {
-    const { fixtureId } = req.params;
-    
-    // Demo mode: return mock data if TxLINE fails
-    if (!process.env.TXLINE_API_TOKEN) {
-      return res.json({
-        fixtureId: parseInt(fixtureId),
-        homeScore: Math.floor(Math.random() * 3),
-        awayScore: Math.floor(Math.random() * 2),
-        gameState: '1H',
-        timestamp: Date.now(),
-        seq: 1,
-      });
-    }
-    
-    const score = await txlineClient.getScoreSnapshot(parseInt(fixtureId));
-    res.json(score);
-  } catch (error: any) {
-    console.error('Error fetching score:', error.message);
-    // Fallback to demo data
-    res.json({
-      fixtureId: parseInt(req.params.fixtureId),
-      homeScore: Math.floor(Math.random() * 3),
-      awayScore: Math.floor(Math.random() * 2),
-      gameState: '1H',
-      timestamp: Date.now(),
-      seq: 1,
-    });
-  }
-});
-
-/**
- * SSE endpoint for live scores (relay from TxLINE)
- */
-app.get('/stream/scores', async (req, res) => {
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-
-  const fixtureId = req.query.fixtureId ? parseInt(req.query.fixtureId as string) : undefined;
-
-  // Demo mode: send mock updates if TxLINE not configured
-  if (!process.env.TXLINE_API_TOKEN) {
-    console.log('🎭 Demo mode: sending mock score updates');
-    const demoInterval = setInterval(() => {
-      const mockUpdate = {
-        fixtureId: fixtureId || 17952170,
-        homeScore: Math.floor(Math.random() * 4),
-        awayScore: Math.floor(Math.random() * 3),
-        gameState: '1H',
-        timestamp: Date.now(),
-        seq: Math.floor(Date.now() / 1000),
-      };
-      res.write(`data: ${JSON.stringify(mockUpdate)}\n\n`);
-    }, 5000); // Send update every 5 seconds
-
-    req.on('close', () => {
-      clearInterval(demoInterval);
-    });
-    return;
-  }
-
-  const stream = txlineClient.connectScoresStream(
-    (update) => {
-      res.write(`data: ${JSON.stringify(update)}\n\n`);
-    },
-    (error) => {
-      console.error('Score stream error:', error);
-      res.write(`data: ${JSON.stringify({ error: 'Stream disconnected' })}\n\n`);
-    },
-    fixtureId
-  );
-
-  req.on('close', () => {
-    txlineClient.disconnect(stream);
-  });
-});
-
-/**
- * Trigger manual settlement (admin only)
+ * Admin endpoint to settle a pool (keeper bot)
  */
 app.post('/api/admin/settle/:fixtureId', async (req, res) => {
   try {
     if (!keeperBot) {
-      return res.status(500).json({ error: 'Keeper bot not enabled' });
+      return res.status(400).json({ error: 'Keeper bot not enabled' });
     }
 
-    const { fixtureId } = req.params;
-    await keeperBot.triggerSettlement(parseInt(fixtureId));
+    const fixtureId = parseInt(req.params.fixtureId);
     
-    res.json({ success: true, message: 'Settlement triggered' });
-  } catch (error) {
-    console.error('Error triggering settlement:', error);
-    res.status(500).json({ error: 'Failed to trigger settlement' });
+    // Fetch final score from TxLINE
+    const scores = await txlineClient.getScoresSnapshot(fixtureId);
+    const finalScore = scores[0];
+    
+    if (!finalScore || !['FT', 'AET', 'PEN'].includes(finalScore.GameState)) {
+      return res.status(400).json({ error: 'Match not finished' });
+    }
+    
+    // Settle on-chain
+    const result = await keeperBot.settlePool(fixtureId, finalScore);
+    
+    res.json({
+      success: true,
+      fixtureId,
+      finalScore: {
+        home: finalScore.HomeScore,
+        away: finalScore.AwayScore,
+      },
+      txSignature: result.txSignature,
+    });
+  } catch (error: any) {
+    console.error('Error settling pool:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to settle pool',
+      message: error.message,
+    });
   }
 });
 
-// ==================== Server Startup ====================
-
+// Start server
 app.listen(PORT, () => {
-  console.log(`🚀 Backend server running on port ${PORT}`);
-  console.log(`📡 TxLINE Base URL: ${process.env.TXLINE_BASE_URL}`);
-  console.log(`🤖 Keeper Bot: ${process.env.ENABLE_KEEPER_BOT === 'true' ? 'Enabled' : 'Disabled'}`);
-  
-  // Start keeper bot if enabled
-  if (keeperBot) {
-    keeperBot.startMonitoring().catch(console.error);
-  }
+  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`📡 Health check: http://localhost:${PORT}/health`);
+  console.log(`⚽ Matches: http://localhost:${PORT}/api/matches`);
+  console.log(`🔴 Live: http://localhost:${PORT}/api/matches/live`);
+  console.log(`📊 Leagues: http://localhost:${PORT}/api/leagues`);
 });
 
 export default app;

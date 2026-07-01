@@ -72,6 +72,33 @@ app.get('/health', (req, res) => {
 });
 
 /**
+ * Transform TxLINE fixture to frontend format
+ */
+function transformFixture(fixture: any) {
+  return {
+    fixtureId: fixture.FixtureId,
+    leagueId: fixture.CompetitionId,
+    league: fixture.Competition || 'Unknown',
+    homeTeam: fixture.Participant1IsHome ? fixture.Participant1 : fixture.Participant2,
+    awayTeam: fixture.Participant1IsHome ? fixture.Participant2 : fixture.Participant1,
+    startTime: fixture.StartTime, // TxLINE returns Unix timestamp in seconds
+    status: mapTxLINEStatus(fixture.Status),
+  };
+}
+
+/**
+ * Map TxLINE status to frontend status
+ */
+function mapTxLINEStatus(status: string): 'scheduled' | 'live' | 'finished' | 'cancelled' {
+  const s = status.toUpperCase();
+  if (s === 'NS') return 'scheduled';
+  if (s === 'F' || s === 'FO') return 'finished';
+  if (s === 'C' || s === 'A' || s === 'TXCC') return 'cancelled';
+  // Everything else is live (Q1, Q2, HT, Q3, Q4, OT, etc.)
+  return 'live';
+}
+
+/**
  * Get live/upcoming matches from TxLINE
  * Query params: competitionId (optional) - filter by specific competition
  */
@@ -86,24 +113,8 @@ app.get('/api/matches', async (req, res) => {
             leagueId: 1,
             homeTeam: 'Brazil',
             awayTeam: 'Germany',
-            startTime: new Date('2026-07-01T15:00:00Z').getTime(),
-            status: 'scheduled',
-          },
-          {
-            fixtureId: 17952171,
-            leagueId: 1,
-            homeTeam: 'France',
-            awayTeam: 'Argentina',
-            startTime: new Date('2026-07-01T19:00:00Z').getTime(),
-            status: 'scheduled',
-          },
-          {
-            fixtureId: 17952172,
-            leagueId: 1,
-            homeTeam: 'Spain',
-            awayTeam: 'Netherlands',
-            startTime: new Date('2026-07-02T15:00:00Z').getTime(),
-            status: 'scheduled',
+            startTime: Date.now() + 3600000,
+            status: 'scheduled' as const,
           },
         ],
         source: 'demo',
@@ -113,7 +124,11 @@ app.get('/api/matches', async (req, res) => {
     // Fetch from TxLINE - Official API
     const competitionId = req.query.competitionId ? parseInt(req.query.competitionId as string) : undefined;
     const fixtures = await txlineClient.getFixtures(competitionId);
-    res.json({ matches: fixtures, source: 'txline' });
+    
+    // Transform TxLINE format to frontend format
+    const transformed = fixtures.map(transformFixture);
+    
+    res.json({ matches: transformed, source: 'txline' });
   } catch (error: any) {
     console.error('Failed to fetch matches:', error.message);
     res.status(500).json({ 

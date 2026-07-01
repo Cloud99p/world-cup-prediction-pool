@@ -226,14 +226,26 @@ app.get('/api/matches/:fixtureId', async (req, res) => {
     }
 
     // Get all fixtures and find the matching one
-    const fixtures = await txlineClient.getFixtureSnapshot();
-    const fixture = fixtures.find(f => f.fixtureId === fixtureId);
+    const fixtures = await txlineClient.getFixtures();
+    const fixture = fixtures.find((f: any) => f.FixtureId === fixtureId);
     
     if (!fixture) {
       return res.status(404).json({ error: 'Fixture not found' });
     }
     
-    res.json({ match: fixture });
+    // Transform to frontend format
+    const transformed = transformFixture(fixture);
+    
+    // Try to add odds
+    try {
+      const txlineOdds = await txlineClient.getOddsSnapshot(fixture.FixtureId);
+      const odds = transformOdds(txlineOdds);
+      transformed.odds = odds;
+    } catch (error) {
+      transformed.odds = { HomeWin: 0, Draw: 0, AwayWin: 0, Over2_5: 0, Under2_5: 0 };
+    }
+    
+    res.json({ match: transformed });
   } catch (error: any) {
     console.error('Failed to fetch match details:', error.message);
     res.status(500).json({ 

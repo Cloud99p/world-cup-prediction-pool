@@ -72,7 +72,7 @@ export default function MatchCard({ match }: MatchCardProps) {
                 hour: '2-digit',
                 minute: '2-digit',
                 timeZone: undefined, // Use browser's local timezone
-              })}
+              })} {new Date().toLocaleTimeString('en-US', { timeZoneName: 'short' }).split(' ')[2]}
             </span>
           )}
         </div>

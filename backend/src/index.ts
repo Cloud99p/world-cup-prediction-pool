@@ -180,7 +180,8 @@ app.get('/api/matches/upcoming', async (req, res) => {
     // Filter for matches that haven't started yet (start time in the future)
     let upcomingMatches = fixtures.filter((fixture: any) => {
       const startTime = fixture.StartTime || 0;
-      return startTime > now; // Match starts in the future
+      const status = mapTxLINEStatus(fixture.Status, fixture.StartTime);
+      return startTime > now && status !== 'live'; // Match starts in the future AND not live
     });
     
     // If date filter provided, filter by that date
@@ -232,11 +233,14 @@ app.get('/api/matches/live', async (req, res) => {
     }
 
     const fixtures = await txlineClient.getFixtures();
+    const now = Date.now();
     
-    // Filter for live matches
+    // Filter for live matches: started but not finished
     const liveMatches = fixtures.filter((fixture: any) => {
       const status = mapTxLINEStatus(fixture.Status, fixture.StartTime);
-      return status === 'live';
+      const startTime = fixture.StartTime || 0;
+      // Live if: started in past AND (status is live OR has scores)
+      return startTime < now && (status === 'live' || fixture.scores?.Score);
     });
     
     // Transform and fetch odds for live matches
@@ -274,10 +278,12 @@ app.get('/api/matches/previous', async (req, res) => {
     const now = Date.now();
     const { date } = req.query;
     
-    // Filter for matches that have started (start time in the past)
+    // Filter for matches that have finished (not live anymore)
     let previousMatches = fixtures.filter((fixture: any) => {
       const startTime = fixture.StartTime || 0;
-      return startTime < now; // Match started in the past
+      const status = mapTxLINEStatus(fixture.Status, fixture.StartTime);
+      // Previous if: started in past AND (finished OR has final scores)
+      return startTime < now && (status === 'finished' || (fixture.scores?.Score && status !== 'live'));
     });
     
     // If date filter provided, filter by that date

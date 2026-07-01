@@ -61,6 +61,16 @@ async function main() {
   const wallet = new anchor.Wallet(Keypair.fromSecretKey(Uint8Array.from(secretKey)));
   
   console.log(`📝 Wallet: ${wallet.publicKey.toBase58()}`);
+  console.log(`📁 Wallet file: ${keypairPath}`);
+  
+  // 🔍 DEBUG: Verify this is the expected wallet
+  const expectedWallet = "8ifrorg6DFECBXFA6fikQ5YkZAhihcqCi72A9shiuuxU"; // Your main wallet
+  if (wallet.publicKey.toBase58() !== expectedWallet) {
+    console.warn(`\n⚠️  WARNING: Wallet mismatch!`);
+    console.warn(`   Expected: ${expectedWallet}`);
+    console.warn(`   Loaded:   ${wallet.publicKey.toBase58()}`);
+    console.warn(`   This might cause token account derivation issues.\n`);
+  }
 
   // Connect to mainnet
   const connection = new Connection(RPC_URL, "confirmed");
@@ -115,6 +125,15 @@ async function main() {
     owner: wallet.publicKey,
   });
   console.log(`   userTokenAccount: ${userTokenAccount.toBase58()}`);
+  
+  // 🔍 DEBUG: Compare with expected account from debug script
+  const expectedAta = "BvnhGgkoszpj1pFpp6VBrZ7enA7F6tspUJGEPhcw95yU";
+  if (userTokenAccount.toBase58() !== expectedAta) {
+    console.warn(`\n⚠️  WARNING: Token account mismatch!`);
+    console.warn(`   Expected (from debug): ${expectedAta}`);
+    console.warn(`   Derived (this script): ${userTokenAccount.toBase58()}`);
+    console.warn(`   This will cause 'pricing_matrix not provided' error!\n`);
+  }
   
   const tokenTreasuryVault = await anchor.utils.token.associatedAddress({
     mint: SUBSCRIPTION_TOKEN_MINT,

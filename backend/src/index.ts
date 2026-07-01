@@ -173,11 +173,12 @@ app.get('/api/matches/upcoming', async (req, res) => {
     }
 
     const fixtures = await txlineClient.getFixtures();
+    const now = Date.now();
     
-    // Filter for scheduled/upcoming matches
+    // Filter for matches that haven't started yet (start time in the future)
     const upcomingMatches = fixtures.filter((fixture: any) => {
-      const status = mapTxLINEStatus(fixture.Status, fixture.StartTime);
-      return status === 'scheduled';
+      const startTime = fixture.StartTime || 0;
+      return startTime > now; // Match starts in the future
     });
     
     // Sort by start time (nearest first)

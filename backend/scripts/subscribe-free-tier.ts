@@ -133,36 +133,16 @@ async function main() {
   const userTokenAccount = new PublicKey("BvnhGgkoszpj1pFpp6VBrZ7enA7F6tspUJGEPhcw95yU");
   console.log(`   userTokenAccount: ${userTokenAccount.toBase58()} (hardcoded - verified exists)`);
   
-  // 🔍 DEBUG: Check multiple treasury PDA variations
-  console.log(`\n🏛️  Treasury PDA Checks:`);
+  // 🔧 FIXED: Use verified treasury PDA and vault (from debug script)
+  // token_treasury PDA (the one that exists)
+  const TREASURY_PDA = new PublicKey("2oerdMyJXg2CHZ9n2NDVhf3JjJNE8QVDsa7PFpABsAmD");
   
-  const [treasuryV2] = PublicKey.findProgramAddressSync(
-    [Buffer.from("token_treasury_v2")],
-    TXLINE_PROGRAM_ID
-  );
-  const treasuryV2Info = await connection.getAccountInfo(treasuryV2);
-  console.log(`   token_treasury_v2: ${treasuryV2.toBase58()}`);
-  console.log(`   Exists: ${!!treasuryV2Info}`);
+  // tokenTreasuryVault ATA (verified exists, 0 TxL balance)
+  const tokenTreasuryVault = new PublicKey("AJ9zqsxGh92GLU1R7pL4y85znxzS7bGH7Y1iwKA9vfYp");
   
-  const [treasury] = PublicKey.findProgramAddressSync(
-    [Buffer.from("token_treasury")],
-    TXLINE_PROGRAM_ID
-  );
-  const treasuryInfo = await connection.getAccountInfo(treasury);
-  console.log(`   token_treasury: ${treasury.toBase58()}`);
-  console.log(`   Exists: ${!!treasuryInfo}`);
-  
-  // Use whichever exists
-  const TREASURY_PDA = treasuryV2Info ? treasuryV2 : (treasuryInfo ? treasury : treasuryV2);
-  console.log(`   → Using: ${TREASURY_PDA.toBase58()}`);
-  
-  const tokenTreasuryVault = await anchor.utils.token.associatedAddress({
-    mint: SUBSCRIPTION_TOKEN_MINT,
-    owner: TREASURY_PDA,
-  });
-  const vaultInfo = await connection.getAccountInfo(tokenTreasuryVault);
-  console.log(`   tokenTreasuryVault: ${tokenTreasuryVault.toBase58()}`);
-  console.log(`   Exists: ${!!vaultInfo}`);
+  console.log(`\n🏛️  Treasury (verified):`);
+  console.log(`   tokenTreasuryPda: ${TREASURY_PDA.toBase58()} ✅`);
+  console.log(`   tokenTreasuryVault: ${tokenTreasuryVault.toBase58()} ✅`);
   console.log(`   tokenProgram: ${TOKEN_2022_PROGRAM_ID.toBase58()}`);
   console.log(`   associatedTokenProgram: ${ASSOCIATED_TOKEN_PROGRAM_ID.toBase58()}`);
   console.log(`   systemProgram: ${SystemProgram.programId.toBase58()}`);

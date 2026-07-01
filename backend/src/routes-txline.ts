@@ -167,7 +167,11 @@ app.get('/api/scores/stream', async (req, res) => {
         for (const fixture of liveFixtures) {
           try {
             const scores = await txlineClient.getScoresHistorical(fixture.FixtureId);
+            console.log(`📊 TxLINE returned ${scores?.length || 0} score updates for fixture ${fixture.FixtureId}`);
+            
+            // Get the LATEST score (last in array)
             const latestScore = scores?.[scores.length - 1];
+            console.log(`⚽ Latest score from TxLINE: Home=${latestScore?.HomeScore}, Away=${latestScore?.AwayScore}, State=${latestScore?.GameState}`);
             
             const data = {
               type: 'score_update',
@@ -181,7 +185,7 @@ app.get('/api/scores/stream', async (req, res) => {
             res.write(`data: ${JSON.stringify(data)}\n\n`);
             console.log(`⚽ Score poll: ${fixture.Participant1} ${data.homeScore}-${data.awayScore} ${fixture.Participant2} (${data.gameState})`);
           } catch (e: any) {
-            // Ignore individual fixture errors
+            console.log(`❌ Score fetch error for ${fixture.FixtureId}:`, e.message);
           }
         }
       } catch (e: any) {

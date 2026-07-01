@@ -110,9 +110,9 @@ app.get('/api/matches', async (req, res) => {
       });
     }
 
-    // Fetch from TxLINE
+    // Fetch from TxLINE - Official API
     const competitionId = req.query.competitionId ? parseInt(req.query.competitionId as string) : undefined;
-    const fixtures = await txlineClient.getFixtureSnapshot(competitionId);
+    const fixtures = await txlineClient.getFixtures(competitionId);
     res.json({ matches: fixtures, source: 'txline' });
   } catch (error: any) {
     console.error('Failed to fetch matches:', error.message);

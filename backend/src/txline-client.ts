@@ -1,10 +1,8 @@
 /**
- * TxLINE Client - Real-time sports data integration
+ * TxLINE Client - Official TxODDS Implementation
  * 
- * Features:
- * - SSE stream for live odds and scores
- * - Merkle proof fetching for on-chain validation
- * - Authentication and token management
+ * Based on: https://github.com/txodds/tx-on-chain
+ * Docs: https://txline.txodds.com/documentation/quickstart
  */
 
 import axios, { AxiosInstance } from 'axios';
@@ -12,62 +10,35 @@ import EventSource from 'eventsource';
 
 export interface TxLINEConfig {
   baseUrl: string;
-  jwt?: string;
-  apiToken?: string;
+  jwt: string;
+  apiToken: string;
+}
+
+export interface Fixture {
+  FixtureId: number;
+  CompetitionId: number;
+  Participant1: string;
+  Participant2: string;
+  Participant1IsHome: boolean;
+  StartTime: number;
+  Status: string;
 }
 
 export interface OddsUpdate {
-  fixtureId: number;
-  marketType: string;
-  odds: number[];
-  timestamp: number;
-  seq: number;
+  FixtureId: number;
+  MarketType: string;
+  Odds: number[];
+  Timestamp: number;
+  Seq: number;
 }
 
 export interface ScoreUpdate {
-  fixtureId: number;
-  homeScore: number;
-  awayScore: number;
-  gameState: string;
-  timestamp: number;
-  seq: number;
-}
-
-export interface FixtureSnapshot {
-  fixtureId: number;
-  leagueId: number;
-  homeTeam: string;
-  awayTeam: string;
-  startTime: number;
-  status: 'scheduled' | 'live' | 'finished' | 'cancelled';
-  homeScore?: number;
-  awayScore?: number;
-  period?: string;
-}
-
-export interface MerkleProof {
-  hash: string;
-  isRightSibling: boolean;
-}
-
-export interface StatValidation {
-  summary: {
-    fixtureId: number;
-    updateStats: {
-      updateCount: number;
-      minTimestamp: number;
-      maxTimestamp: number;
-    };
-    eventStatsSubTreeRoot: string;
-  };
-  subTreeProof: MerkleProof[];
-  mainTreeProof: MerkleProof[];
-  statToProve: {
-    statKey: number;
-    statValue: number;
-  };
-  statProof: MerkleProof[];
-  eventStatRoot: string;
+  FixtureId: number;
+  HomeScore: number;
+  AwayScore: number;
+  GameState: string;
+  Timestamp: number;
+  Seq: number;
 }
 
 export class TxLINEClient {
@@ -76,13 +47,15 @@ export class TxLINEClient {
 
   constructor(config: TxLINEConfig) {
     this.config = config;
+    
+    // Create axios instance with auth headers
     this.client = axios.create({
       baseURL: config.baseUrl,
       timeout: 30000,
       headers: {
         'Content-Type': 'application/json',
-        ...(config.jwt && { Authorization: `Bearer ${config.jwt}` }),
-        ...(config.apiToken && { 'X-Api-Token': config.apiToken }),
+        'Authorization': `Bearer ${config.jwt}`,
+        'X-Api-Token': config.apiToken,
       },
     });
   }
@@ -97,42 +70,76 @@ export class TxLINEClient {
     this.client.defaults.headers.common['X-Api-Token'] = apiToken;
   }
 
+  // ==================== FIXTURES ====================
+
   /**
-   * Get current JWT
+   * Get fixtures snapshot
+   * GET /api/fixtures/snapshot
    */
-  getJwt(): string {
-    return this.config.jwt || '';
+  async getFixtures(competitionId?: number, startEpochDay?: number): Promise<Fixture[]> {
+    const params: Record<string, any> = {};
+    if (competitionId) params.competitionId = competitionId;
+    if (startEpochDay) params.startEpochDay = startEpochDay;
+    
+    const response = await this.client.get('/api/fixtures/snapshot', { params });
+    return response.data as Fixture[];
   }
 
   /**
-   * Get current API token
+   * Get fixture updates for a time period
+   * GET /api/fixtures/updates/{epochDay}/{hourOfDay}
    */
-  getApiToken(): string {
-    return this.config.apiToken || '';
+  async getFixtureUpdates(epochDay: number, hourOfDay: number): Promise<Fixture[]> {
+    const response = await this.client.get(`/api/fixtures/updates/${epochDay}/${hourOfDay}`);
+    return response.data as Fixture[];
+  }
+
+  // ==================== ODDS ====================
+
+  /**
+   * Get odds snapshot for a fixture
+   * GET /api/odds/snapshot/{fixtureId}
+   */
+  async getOddsSnapshot(fixtureId: number, asOf?: number): Promise<OddsUpdate[]> {
+    const params: Record<string, any> = {};
+    if (asOf) params.asOf = asOf;
+    
+    const response = await this.client.get(`/api/odds/snapshot/${fixtureId}`, { params });
+    return response.data as OddsUpdate[];
   }
 
   /**
-   * Get guest JWT token
+   * Get live odds updates for a fixture
+   * GET /api/odds/updates/{fixtureId}
    */
-  async getGuestToken(): Promise<string> {
-    const response = await this.client.post('/auth/guest/start');
-    return response.data.token;
+  async getOddsUpdates(fixtureId: number): Promise<OddsUpdate[]> {
+    const response = await this.client.get(`/api/odds/updates/${fixtureId}`);
+    return response.data as OddsUpdate[];
   }
 
   /**
-   * Activate API token after on-chain subscription
+   * Get historical odds for a 5-minute interval
+   * GET /api/odds/updates/{epochDay}/{hourOfDay}/{interval}
    */
-  async activateToken(txSig: string, walletSignature: string, leagues: number[] = []): Promise<string> {
-    const response = await this.client.post('/api/token/activate', {
-      txSig,
-      walletSignature,
-      leagues,
-    });
-    return response.data.token || response.data;
+  async getOddsUpdatesByInterval(
+    epochDay: number,
+    hourOfDay: number,
+    interval: number,
+    fixtureId?: number
+  ): Promise<OddsUpdate[]> {
+    const params: Record<string, any> = {};
+    if (fixtureId) params.fixtureId = fixtureId;
+    
+    const response = await this.client.get(
+      `/api/odds/updates/${epochDay}/${hourOfDay}/${interval}`,
+      { params }
+    );
+    return response.data as OddsUpdate[];
   }
 
   /**
    * Connect to odds SSE stream
+   * GET /api/odds/stream
    */
   connectOddsStream(
     onOddsUpdate: (update: OddsUpdate) => void,
@@ -141,14 +148,14 @@ export class TxLINEClient {
   ): EventSource {
     const url = new URL(`${this.config.baseUrl}/api/odds/stream`);
     if (fixtureId) {
-      url.searchParams.set('fixture_id', fixtureId.toString());
+      url.searchParams.set('fixtureId', fixtureId.toString());
     }
 
     const eventSource = new EventSource(url.toString(), {
       headers: {
-        Authorization: `Bearer ${this.config.jwt}`,
-        'X-Api-Token': this.config.apiToken!,
-        Accept: 'text/event-stream',
+        'Authorization': `Bearer ${this.config.jwt}`,
+        'X-Api-Token': this.config.apiToken,
+        'Accept': 'text/event-stream',
         'Cache-Control': 'no-cache',
       },
     });
@@ -171,9 +178,61 @@ export class TxLINEClient {
     return eventSource;
   }
 
+  // ==================== SCORES ====================
+
+  /**
+   * Get scores snapshot for a fixture
+   * GET /api/scores/snapshot/{fixtureId}
+   */
+  async getScoresSnapshot(fixtureId: number, asOf?: number): Promise<ScoreUpdate[]> {
+    const params: Record<string, any> = {};
+    if (asOf) params.asOf = asOf;
+    
+    const response = await this.client.get(`/api/scores/snapshot/${fixtureId}`, { params });
+    return response.data as ScoreUpdate[];
+  }
+
+  /**
+   * Get live scores updates for a fixture
+   * GET /api/scores/updates/{fixtureId}
+   */
+  async getScoresUpdates(fixtureId: number): Promise<ScoreUpdate[]> {
+    const response = await this.client.get(`/api/scores/updates/${fixtureId}`);
+    return response.data as ScoreUpdate[];
+  }
+
+  /**
+   * Get historical scores for a fixture (2 weeks - 6 hours ago)
+   * GET /api/scores/historical/{fixtureId}
+   */
+  async getHistoricalScores(fixtureId: number): Promise<ScoreUpdate[]> {
+    const response = await this.client.get(`/api/scores/historical/${fixtureId}`);
+    return response.data as ScoreUpdate[];
+  }
+
+  /**
+   * Get historical scores for a 5-minute interval
+   * GET /api/scores/updates/{epochDay}/{hourOfDay}/{interval}
+   */
+  async getScoresUpdatesByInterval(
+    epochDay: number,
+    hourOfDay: number,
+    interval: number,
+    fixtureId?: number
+  ): Promise<ScoreUpdate[]> {
+    const params: Record<string, any> = {};
+    if (fixtureId) params.fixtureId = fixtureId;
+    
+    const response = await this.client.get(
+      `/api/scores/updates/${epochDay}/${hourOfDay}/${interval}`,
+      { params }
+    );
+    return response.data as ScoreUpdate[];
+  }
+
   /**
    * Connect to scores SSE stream
-   * Falls back to REST polling if SSE fails
+   * GET /api/scores/stream
    */
   connectScoresStream(
     onScoreUpdate: (update: ScoreUpdate) => void,
@@ -182,14 +241,14 @@ export class TxLINEClient {
   ): EventSource {
     const url = new URL(`${this.config.baseUrl}/api/scores/stream`);
     if (fixtureId) {
-      url.searchParams.set('fixture_id', fixtureId.toString());
+      url.searchParams.set('fixtureId', fixtureId.toString());
     }
 
     const eventSource = new EventSource(url.toString(), {
       headers: {
-        Authorization: `Bearer ${this.config.jwt}`,
-        'X-Api-Token': this.config.apiToken!,
-        Accept: 'text/event-stream',
+        'Authorization': `Bearer ${this.config.jwt}`,
+        'X-Api-Token': this.config.apiToken,
+        'Accept': 'text/event-stream',
         'Cache-Control': 'no-cache',
       },
     });
@@ -219,114 +278,21 @@ export class TxLINEClient {
 
   /**
    * Get Merkle proof for stat validation
+   * GET /api/scores/stat-validation
    */
   async getStatValidation(
     fixtureId: number,
     seq: number,
-    statKey: number
-  ): Promise<StatValidation> {
-    const response = await this.client.get('/api/scores/stat-validation', {
-      params: { fixtureId, seq, statKey },
-    });
-    return response.data as StatValidation;
-  }
-
-  /**
-   * Get score snapshot for a fixture
-   */
-  async getScoreSnapshot(fixtureId: number, asOf?: number): Promise<ScoreUpdate> {
-    const params: any = {};
-    if (asOf) {
-      params.asOf = asOf;
-    }
-    const response = await this.client.get(`/api/scores/snapshot/${fixtureId}`, { params });
-    return response.data as ScoreUpdate;
-  }
-
-  /**
-   * Get historical scores for a fixture
-   */
-  async getHistoricalScores(fixtureId: number): Promise<ScoreUpdate[]> {
-    const response = await this.client.get(`/api/scores/historical/${fixtureId}`);
-    return response.data as ScoreUpdate[];
-  }
-
-  /**
-   * Get fixture snapshot (match details)
-   */
-  /**
-   * Get fixtures snapshot
-   * @param competitionId - Optional competition ID to filter fixtures
-   */
-  async getFixtureSnapshot(competitionId?: number): Promise<FixtureSnapshot[]> {
-    const params: Record<string, any> = {};
-    if (competitionId) {
-      params.competitionId = competitionId;
-    }
-    const response = await this.client.get('/api/fixtures/snapshot', { params });
-    return response.data as FixtureSnapshot[];
-  }
-
-  /**
-   * Get all fixtures (alias for getFixtureSnapshot without params)
-   */
-  async getLiveFixtures(): Promise<FixtureSnapshot[]> {
-    return this.getFixtureSnapshot();
-  }
-
-  /**
-   * Get odds snapshot for a specific fixture
-   */
-  async getOddsSnapshot(fixtureId: number): Promise<any[]> {
-    const response = await this.client.get(`/api/odds/snapshot/${fixtureId}`);
-    return response.data as any[];
-  }
-
-  /**
-   * Get odds updates for a specific time period
-   */
-  async getOddsUpdates(epochDay: number, hourOfDay: number, interval: number): Promise<any[]> {
-    const response = await this.client.get(`/api/odds/updates/${epochDay}/${hourOfDay}/${interval}`);
-    return response.data as any[];
-  }
-
-  /**
-   * Get scores snapshot for a specific fixture
-   */
-  async getScoresSnapshot(fixtureId: number): Promise<any[]> {
-    const response = await this.client.get(`/api/scores/snapshot/${fixtureId}`);
-    return response.data as any[];
-  }
-
-  /**
-   * Get scores updates for a specific fixture
-   */
-  async getScoresUpdates(fixtureId: number): Promise<any[]> {
-    const response = await this.client.get(`/api/scores/updates/${fixtureId}`);
-    return response.data as any[];
-  }
-
-  /**
-   * Get historical scores for a fixture (available for fixtures started between 2 weeks and 6 hours ago)
-   */
-  async getHistoricalScores(fixtureId: number): Promise<any[]> {
-    const response = await this.client.get(`/api/scores/historical/${fixtureId}`);
-    return response.data as any[];
-  }
-
-  /**
-   * Get currently live odds for a fixture
-   */
-  async getLiveOdds(fixtureId: number): Promise<OddsUpdate[]> {
-    const response = await this.client.get(`/api/odds/live/${fixtureId}`);
-    return response.data as OddsUpdate[];
-  }
-
-  /**
-   * Disconnect SSE streams
-   */
-  disconnect(stream: EventSource) {
-    stream.close();
+    statKey: number,
+    statKey2?: number,
+    statKeys?: string
+  ): Promise<any> {
+    const params: Record<string, any> = { fixtureId, seq, statKey };
+    if (statKey2) params.statKey2 = statKey2;
+    if (statKeys) params.statKeys = statKeys;
+    
+    const response = await this.client.get('/api/scores/stat-validation', { params });
+    return response.data;
   }
 }
 

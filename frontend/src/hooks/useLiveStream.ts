@@ -94,8 +94,8 @@ export function useLiveStream(options: UseLiveStreamOptions = {}) {
       };
 
       scoresSource.onerror = (err) => {
-        console.log('⚠️ Scores stream error (will reconnect)');
-        // Don't trigger error - let it reconnect automatically
+        console.log('⚠️ Scores stream error');
+        // Don't close - EventSource will auto-reconnect
       };
 
       scoresSourceRef.current = scoresSource;
@@ -127,7 +127,8 @@ export function useLiveStream(options: UseLiveStreamOptions = {}) {
     return () => {
       disconnect();
     };
-  }, [enabled, connect, disconnect]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled]);  // Only reconnect when enabled changes
 
   return {
     connect,

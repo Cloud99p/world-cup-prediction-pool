@@ -24,7 +24,7 @@ app.get('/api/odds/stream', async (req, res) => {
     res.setHeader('X-Accel-Buffering', 'no');
     res.setHeader('Access-Control-Allow-Origin', '*');
     
-    console.log('📡 Opening SSE odds stream (relaying from TxLINE)...');
+    console.log('📡 Opening SSE odds stream (hybrid: SSE + polling)...');
     
     // Flush headers immediately
     res.flushHeaders();
@@ -37,85 +37,91 @@ app.get('/api/odds/stream', async (req, res) => {
       res.write(`data: ${JSON.stringify({ type: 'heartbeat', timestamp: Date.now() })}\n\n`);
     }, 3000);
     
-    // Connect to TxLINE's native SSE stream and relay to frontend
-    const txlineStream = await fetch(`${txlineClient['config'].baseUrl}/api/odds/stream`, {
-      headers: {
-        'Authorization': `Bearer ${txlineClient['config'].jwt}`,
-        'X-Api-Token': txlineClient['config'].apiToken,
-        'Accept': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-      },
-    });
-    
-    if (!txlineStream.ok) {
-      throw new Error(`TxLINE stream failed: ${txlineStream.status}`);
-    }
-    
-    console.log('✅ Connected to TxLINE odds stream');
-    
-    // Relay SSE messages from TxLINE to frontend
-    const reader = txlineStream.body?.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    
-    if (reader) {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+    // Poll for odds every 5 seconds (fallback when TxLINE SSE is quiet)
+    const pollInterval = setInterval(async () => {
+      try {
+        const fixtures = await txlineClient.getFixtures();
+        const liveFixtures = fixtures.filter((f: any) => {
+          const startTime = f.StartTime || 0;
+          const now = Date.now();
+          const matchEnd = startTime + (2 * 60 * 60 * 1000);
+          return startTime < now && matchEnd > now;
+        });
         
-        buffer += decoder.decode(value, { stream: true });
-        
-        // Process complete SSE messages (separated by double newline)
-        const messages = buffer.split('\n\n');
-        buffer = messages.pop() || ''; // Keep incomplete message in buffer
-        
-        for (const message of messages) {
-          if (message.trim()) {
-            // Parse and transform TxLINE format to frontend format
-            const lines = message.split('\n');
-            const transformedLines: string[] = [];
+        for (const fixture of liveFixtures) {
+          try {
+            const odds = await txlineClient.getOddsSnapshot(fixture.FixtureId);
+            const overUnder = odds.find((o: any) => o.Market?.includes('Over/Under 2.5'));
             
-            for (const line of lines) {
-              if (line.startsWith('event:')) {
-                // Keep event line as-is
-                transformedLines.push(line);
-              } else if (line.startsWith('data:')) {
-                try {
-                  const txlineData = JSON.parse(line.slice(5).trim());
-                  
-                  // Transform TxLINE PascalCase to frontend camelCase
-                  const transformedData: any = {
-                    type: 'odds_update',
-                    fixtureId: txlineData.FixtureId,
-                    marketType: txlineData.MarketType || txlineData.Market,
-                    odds: txlineData.Odds || [],
-                    timestamp: txlineData.Ts || Date.now(),
-                  };
-                  
-                  transformedLines.push(`data: ${JSON.stringify(transformedData)}`);
-                  
-                  // Log for debugging
-                  if (transformedData.fixtureId) {
-                    console.log(`📊 TxLINE odds update: Fixture ${transformedData.fixtureId}, ${transformedData.marketType}`);
-                  }
-                } catch (e) {
-                  // Keep original line if parse fails
-                  transformedLines.push(line);
-                }
-              } else {
-                transformedLines.push(line);
+            if (overUnder) {
+              const data = {
+                type: 'odds_update',
+                fixtureId: fixture.FixtureId,
+                marketType: 'Over/Under 2.5',
+                odds: [
+                  overUnder.Outcomes?.[0]?.Price ?? 0,
+                  overUnder.Outcomes?.[1]?.Price ?? 0
+                ],
+                timestamp: Date.now(),
+              };
+              
+              res.write(`data: ${JSON.stringify(data)}\n\n`);
+              console.log(`📊 Odds poll: ${fixture.Participant1} vs ${fixture.Participant2} - Over=${data.odds[0]}, Under=${data.odds[1]}`);
+            }
+          } catch (e: any) {
+            // Ignore individual fixture errors
+          }
+        }
+      } catch (e: any) {
+        console.log('⚠️ Odds polling error:', e.message);
+      }
+    }, 5000);
+    
+    // Also try to connect to TxLINE SSE and relay
+    try {
+      const txlineStream = await fetch(`${txlineClient['config'].baseUrl}/api/odds/stream`, {
+        headers: {
+          'Authorization': `Bearer ${txlineClient['config'].jwt}`,
+          'X-Api-Token': txlineClient['config'].apiToken,
+          'Accept': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+        },
+      });
+      
+      if (txlineStream.ok) {
+        console.log('✅ Connected to TxLINE odds stream');
+        
+        const reader = txlineStream.body?.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        
+        if (reader) {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            buffer += decoder.decode(value, { stream: true });
+            const messages = buffer.split('\n\n');
+            buffer = messages.pop() || '';
+            
+            for (const message of messages) {
+              if (message.trim()) {
+                res.write(`${message}\n\n`);
               }
             }
-            
-            // Send transformed message
-            res.write(`${transformedLines.join('\n')}\n\n`);
           }
         }
       }
+    } catch (e: any) {
+      console.log('⚠️ TxLINE SSE not available, using polling only');
     }
     
-    console.log('🔌 TxLINE odds stream ended');
-    clearInterval(heartbeatInterval);
+    req.on('close', () => {
+      console.log('🔌 Client disconnected from odds stream');
+      clearInterval(heartbeatInterval);
+      clearInterval(pollInterval);
+    });
+    
   } catch (error: any) {
     console.error('❌ Failed to open odds stream:', error.message);
     clearInterval(heartbeatInterval);
@@ -134,7 +140,7 @@ app.get('/api/scores/stream', async (req, res) => {
     res.setHeader('X-Accel-Buffering', 'no');
     res.setHeader('Access-Control-Allow-Origin', '*');
     
-    console.log('⚽ Opening SSE scores stream (relaying from TxLINE)...');
+    console.log('⚽ Opening SSE scores stream (hybrid: SSE + polling)...');
     
     // Flush headers immediately
     res.flushHeaders();
@@ -147,89 +153,89 @@ app.get('/api/scores/stream', async (req, res) => {
       res.write(`data: ${JSON.stringify({ type: 'heartbeat', timestamp: Date.now() })}\n\n`);
     }, 3000);
     
-    // Connect to TxLINE's native SSE stream and relay to frontend
-    const txlineStream = await fetch(`${txlineClient['config'].baseUrl}/api/scores/stream`, {
-      headers: {
-        'Authorization': `Bearer ${txlineClient['config'].jwt}`,
-        'X-Api-Token': txlineClient['config'].apiToken,
-        'Accept': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-      },
-    });
-    
-    if (!txlineStream.ok) {
-      throw new Error(`TxLINE stream failed: ${txlineStream.status}`);
-    }
-    
-    console.log('✅ Connected to TxLINE scores stream');
-    
-    // Relay SSE messages from TxLINE to frontend
-    const reader = txlineStream.body?.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    
-    if (reader) {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+    // Poll for scores every 5 seconds (fallback when TxLINE SSE is quiet)
+    const pollInterval = setInterval(async () => {
+      try {
+        const fixtures = await txlineClient.getFixtures();
+        const liveFixtures = fixtures.filter((f: any) => {
+          const startTime = f.StartTime || 0;
+          const now = Date.now();
+          const matchEnd = startTime + (2 * 60 * 60 * 1000);
+          return startTime < now && matchEnd > now;
+        });
         
-        buffer += decoder.decode(value, { stream: true });
-        
-        // Process complete SSE messages (separated by double newline)
-        const messages = buffer.split('\n\n');
-        buffer = messages.pop() || ''; // Keep incomplete message in buffer
-        
-        for (const message of messages) {
-          if (message.trim()) {
-            // Parse and transform TxLINE format to frontend format
-            const lines = message.split('\n');
-            const transformedLines: string[] = [];
+        for (const fixture of liveFixtures) {
+          try {
+            const scores = await txlineClient.getScoresHistorical(fixture.FixtureId);
+            const latestScore = scores?.[scores.length - 1];
             
-            for (const line of lines) {
-              if (line.startsWith('event:')) {
-                // Keep event line as-is
-                transformedLines.push(line);
-              } else if (line.startsWith('data:')) {
-                try {
-                  const txlineData = JSON.parse(line.slice(5).trim());
-                  
-                  // Transform TxLINE PascalCase to frontend camelCase
-                  const transformedData: any = {
-                    type: 'score_update',
-                    fixtureId: txlineData.FixtureId,
-                    homeScore: txlineData.HomeScore ?? 0,
-                    awayScore: txlineData.AwayScore ?? 0,
-                    gameState: txlineData.GameState || txlineData.Status || 'live',
-                    timestamp: txlineData.Ts || Date.now(),
-                  };
-                  
-                  transformedLines.push(`data: ${JSON.stringify(transformedData)}`);
-                  
-                  // Log for debugging
-                  if (transformedData.homeScore !== undefined || transformedData.awayScore !== undefined) {
-                    console.log(`⚽ TxLINE score update: Fixture ${transformedData.fixtureId}, ${transformedData.homeScore}-${transformedData.awayScore}, ${transformedData.gameState}`);
-                  }
-                } catch (e) {
-                  // Keep original line if parse fails
-                  transformedLines.push(line);
-                }
-              } else {
-                transformedLines.push(line);
+            const data = {
+              type: 'score_update',
+              fixtureId: fixture.FixtureId,
+              homeScore: latestScore?.HomeScore ?? 0,
+              awayScore: latestScore?.AwayScore ?? 0,
+              gameState: latestScore?.GameState || 'live',
+              timestamp: Date.now(),
+            };
+            
+            res.write(`data: ${JSON.stringify(data)}\n\n`);
+            console.log(`⚽ Score poll: ${fixture.Participant1} ${data.homeScore}-${data.awayScore} ${fixture.Participant2} (${data.gameState})`);
+          } catch (e: any) {
+            // Ignore individual fixture errors
+          }
+        }
+      } catch (e: any) {
+        console.log('⚠️ Score polling error:', e.message);
+      }
+    }, 5000);
+    
+    // Also try to connect to TxLINE SSE and relay
+    try {
+      const txlineStream = await fetch(`${txlineClient['config'].baseUrl}/api/scores/stream`, {
+        headers: {
+          'Authorization': `Bearer ${txlineClient['config'].jwt}`,
+          'X-Api-Token': txlineClient['config'].apiToken,
+          'Accept': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+        },
+      });
+      
+      if (txlineStream.ok) {
+        console.log('✅ Connected to TxLINE scores stream');
+        
+        const reader = txlineStream.body?.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        
+        if (reader) {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            buffer += decoder.decode(value, { stream: true });
+            const messages = buffer.split('\n\n');
+            buffer = messages.pop() || '';
+            
+            for (const message of messages) {
+              if (message.trim()) {
+                res.write(`${message}\n\n`);
               }
             }
-            
-            // Send transformed message
-            res.write(`${transformedLines.join('\n')}\n\n`);
           }
         }
       }
+    } catch (e: any) {
+      console.log('⚠️ TxLINE SSE not available, using polling only');
     }
     
-    console.log('🔌 TxLINE scores stream ended');
-    clearInterval(heartbeatInterval);
+    req.on('close', () => {
+      console.log('🔌 Client disconnected from scores stream');
+      clearInterval(heartbeatInterval);
+      clearInterval(pollInterval);
+    });
+    
   } catch (error: any) {
     console.error('❌ Failed to open scores stream:', error.message);
-    clearInterval(heartbeatInterval);
     res.end();
   }
 });

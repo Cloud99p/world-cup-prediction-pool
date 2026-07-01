@@ -53,7 +53,7 @@ async function activateToken(txSig: string) {
   try {
     // Following official docs: https://txline.txodds.com/documentation/worldcup
     const activationResponse = await axios.post(
-      'https://txline.txodds.com/token/activate',
+      'https://txline.txodds.com/api/token/activate',
       {
         txSig,
         walletSignature,

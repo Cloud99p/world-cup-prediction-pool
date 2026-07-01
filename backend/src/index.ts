@@ -98,8 +98,7 @@ function mapTxLINEStatus(status: string | undefined, startTime?: number): 'sched
     // If no status, check if match should be live based on start time
     if (startTime) {
       const now = Date.now();
-      const startMs = startTime * 1000; // Convert to milliseconds
-      const matchStart = new Date(startMs).getTime();
+      const matchStart = startTime; // Already in milliseconds
       const matchEnd = matchStart + (2 * 60 * 60 * 1000); // 2 hours after start
       
       if (now >= matchStart && now <= matchEnd) {

@@ -29,6 +29,14 @@ app.get('/api/odds/stream', async (req, res) => {
     // Flush headers immediately
     res.flushHeaders();
     
+    // Send initial connection confirmation
+    res.write(`data: ${JSON.stringify({ type: 'connected', message: 'Odds stream connected' })}\n\n`);
+    
+    // Send heartbeat every 3 seconds to keep connection alive
+    const heartbeatInterval = setInterval(() => {
+      res.write(`data: ${JSON.stringify({ type: 'heartbeat', timestamp: Date.now() })}\n\n`);
+    }, 3000);
+    
     // Connect to TxLINE's native SSE stream and relay to frontend
     const txlineStream = await fetch(`${txlineClient['config'].baseUrl}/api/odds/stream`, {
       headers: {
@@ -50,63 +58,67 @@ app.get('/api/odds/stream', async (req, res) => {
     const decoder = new TextDecoder();
     let buffer = '';
     
-    while (reader) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      
-      buffer += decoder.decode(value, { stream: true });
-      
-      // Process complete SSE messages (separated by double newline)
-      const messages = buffer.split('\n\n');
-      buffer = messages.pop() || ''; // Keep incomplete message in buffer
-      
-      for (const message of messages) {
-        if (message.trim()) {
-          // Parse and transform TxLINE format to frontend format
-          const lines = message.split('\n');
-          const transformedLines: string[] = [];
-          
-          for (const line of lines) {
-            if (line.startsWith('event:')) {
-              // Keep event line as-is
-              transformedLines.push(line);
-            } else if (line.startsWith('data:')) {
-              try {
-                const txlineData = JSON.parse(line.slice(5).trim());
-                
-                // Transform TxLINE PascalCase to frontend camelCase
-                const transformedData: any = {
-                  type: 'odds_update',
-                  fixtureId: txlineData.FixtureId,
-                  marketType: txlineData.MarketType || txlineData.Market,
-                  odds: txlineData.Odds || [],
-                  timestamp: txlineData.Ts || Date.now(),
-                };
-                
-                transformedLines.push(`data: ${JSON.stringify(transformedData)}`);
-                
-                // Log for debugging
-                if (transformedData.fixtureId) {
-                  console.log(`📊 TxLINE odds update: Fixture ${transformedData.fixtureId}, ${transformedData.marketType}`);
+    if (reader) {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        buffer += decoder.decode(value, { stream: true });
+        
+        // Process complete SSE messages (separated by double newline)
+        const messages = buffer.split('\n\n');
+        buffer = messages.pop() || ''; // Keep incomplete message in buffer
+        
+        for (const message of messages) {
+          if (message.trim()) {
+            // Parse and transform TxLINE format to frontend format
+            const lines = message.split('\n');
+            const transformedLines: string[] = [];
+            
+            for (const line of lines) {
+              if (line.startsWith('event:')) {
+                // Keep event line as-is
+                transformedLines.push(line);
+              } else if (line.startsWith('data:')) {
+                try {
+                  const txlineData = JSON.parse(line.slice(5).trim());
+                  
+                  // Transform TxLINE PascalCase to frontend camelCase
+                  const transformedData: any = {
+                    type: 'odds_update',
+                    fixtureId: txlineData.FixtureId,
+                    marketType: txlineData.MarketType || txlineData.Market,
+                    odds: txlineData.Odds || [],
+                    timestamp: txlineData.Ts || Date.now(),
+                  };
+                  
+                  transformedLines.push(`data: ${JSON.stringify(transformedData)}`);
+                  
+                  // Log for debugging
+                  if (transformedData.fixtureId) {
+                    console.log(`📊 TxLINE odds update: Fixture ${transformedData.fixtureId}, ${transformedData.marketType}`);
+                  }
+                } catch (e) {
+                  // Keep original line if parse fails
+                  transformedLines.push(line);
                 }
-              } catch (e) {
-                // Keep original line if parse fails
+              } else {
                 transformedLines.push(line);
               }
-            } else {
-              transformedLines.push(line);
             }
+            
+            // Send transformed message
+            res.write(`${transformedLines.join('\n')}\n\n`);
           }
-          
-          // Send transformed message
-          res.write(`${transformedLines.join('\n')}\n\n`);
         }
       }
     }
     
     console.log('🔌 TxLINE odds stream ended');
+    clearInterval(heartbeatInterval);
   } catch (error: any) {
     console.error('❌ Failed to open odds stream:', error.message);
+    clearInterval(heartbeatInterval);
     res.end();
   }
 });
@@ -126,6 +138,14 @@ app.get('/api/scores/stream', async (req, res) => {
     
     // Flush headers immediately
     res.flushHeaders();
+    
+    // Send initial connection confirmation
+    res.write(`data: ${JSON.stringify({ type: 'connected', message: 'Scores stream connected' })}\n\n`);
+    
+    // Send heartbeat every 3 seconds to keep connection alive
+    const heartbeatInterval = setInterval(() => {
+      res.write(`data: ${JSON.stringify({ type: 'heartbeat', timestamp: Date.now() })}\n\n`);
+    }, 3000);
     
     // Connect to TxLINE's native SSE stream and relay to frontend
     const txlineStream = await fetch(`${txlineClient['config'].baseUrl}/api/scores/stream`, {
@@ -148,64 +168,68 @@ app.get('/api/scores/stream', async (req, res) => {
     const decoder = new TextDecoder();
     let buffer = '';
     
-    while (reader) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      
-      buffer += decoder.decode(value, { stream: true });
-      
-      // Process complete SSE messages (separated by double newline)
-      const messages = buffer.split('\n\n');
-      buffer = messages.pop() || ''; // Keep incomplete message in buffer
-      
-      for (const message of messages) {
-        if (message.trim()) {
-          // Parse and transform TxLINE format to frontend format
-          const lines = message.split('\n');
-          const transformedLines: string[] = [];
-          
-          for (const line of lines) {
-            if (line.startsWith('event:')) {
-              // Keep event line as-is
-              transformedLines.push(line);
-            } else if (line.startsWith('data:')) {
-              try {
-                const txlineData = JSON.parse(line.slice(5).trim());
-                
-                // Transform TxLINE PascalCase to frontend camelCase
-                const transformedData: any = {
-                  type: 'score_update',
-                  fixtureId: txlineData.FixtureId,
-                  homeScore: txlineData.HomeScore ?? 0,
-                  awayScore: txlineData.AwayScore ?? 0,
-                  gameState: txlineData.GameState || txlineData.Status || 'live',
-                  timestamp: txlineData.Ts || Date.now(),
-                };
-                
-                transformedLines.push(`data: ${JSON.stringify(transformedData)}`);
-                
-                // Log for debugging
-                if (transformedData.homeScore !== undefined || transformedData.awayScore !== undefined) {
-                  console.log(`⚽ TxLINE score update: Fixture ${transformedData.fixtureId}, ${transformedData.homeScore}-${transformedData.awayScore}, ${transformedData.gameState}`);
+    if (reader) {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        buffer += decoder.decode(value, { stream: true });
+        
+        // Process complete SSE messages (separated by double newline)
+        const messages = buffer.split('\n\n');
+        buffer = messages.pop() || ''; // Keep incomplete message in buffer
+        
+        for (const message of messages) {
+          if (message.trim()) {
+            // Parse and transform TxLINE format to frontend format
+            const lines = message.split('\n');
+            const transformedLines: string[] = [];
+            
+            for (const line of lines) {
+              if (line.startsWith('event:')) {
+                // Keep event line as-is
+                transformedLines.push(line);
+              } else if (line.startsWith('data:')) {
+                try {
+                  const txlineData = JSON.parse(line.slice(5).trim());
+                  
+                  // Transform TxLINE PascalCase to frontend camelCase
+                  const transformedData: any = {
+                    type: 'score_update',
+                    fixtureId: txlineData.FixtureId,
+                    homeScore: txlineData.HomeScore ?? 0,
+                    awayScore: txlineData.AwayScore ?? 0,
+                    gameState: txlineData.GameState || txlineData.Status || 'live',
+                    timestamp: txlineData.Ts || Date.now(),
+                  };
+                  
+                  transformedLines.push(`data: ${JSON.stringify(transformedData)}`);
+                  
+                  // Log for debugging
+                  if (transformedData.homeScore !== undefined || transformedData.awayScore !== undefined) {
+                    console.log(`⚽ TxLINE score update: Fixture ${transformedData.fixtureId}, ${transformedData.homeScore}-${transformedData.awayScore}, ${transformedData.gameState}`);
+                  }
+                } catch (e) {
+                  // Keep original line if parse fails
+                  transformedLines.push(line);
                 }
-              } catch (e) {
-                // Keep original line if parse fails
+              } else {
                 transformedLines.push(line);
               }
-            } else {
-              transformedLines.push(line);
             }
+            
+            // Send transformed message
+            res.write(`${transformedLines.join('\n')}\n\n`);
           }
-          
-          // Send transformed message
-          res.write(`${transformedLines.join('\n')}\n\n`);
         }
       }
     }
     
     console.log('🔌 TxLINE scores stream ended');
+    clearInterval(heartbeatInterval);
   } catch (error: any) {
     console.error('❌ Failed to open scores stream:', error.message);
+    clearInterval(heartbeatInterval);
     res.end();
   }
 });

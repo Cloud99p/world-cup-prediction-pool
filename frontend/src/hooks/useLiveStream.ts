@@ -49,6 +49,10 @@ export function useLiveStream(options: UseLiveStreamOptions = {}) {
           const data = JSON.parse(event.data);
           if (data.type === 'odds_update' && onOddsUpdate) {
             onOddsUpdate(data as OddsUpdate);
+          } else if (data.type === 'heartbeat') {
+            // Ignore heartbeats (just keeps connection alive)
+          } else if (data.type === 'connected') {
+            console.log('✅', data.message);
           } else if (data.type === 'error' && onError) {
             onError(new Error(data.message));
           }
@@ -57,9 +61,9 @@ export function useLiveStream(options: UseLiveStreamOptions = {}) {
         }
       };
 
-      oddsSource.onerror = () => {
-        console.log('⚠️ Odds stream connection error');
-        onError?.(new Error('Odds stream disconnected'));
+      oddsSource.onerror = (err) => {
+        console.log('⚠️ Odds stream error (will reconnect)');
+        // Don't trigger error - let it reconnect automatically
       };
 
       oddsSourceRef.current = oddsSource;
@@ -77,6 +81,10 @@ export function useLiveStream(options: UseLiveStreamOptions = {}) {
           const data = JSON.parse(event.data);
           if (data.type === 'score_update' && onScoreUpdate) {
             onScoreUpdate(data as ScoreUpdate);
+          } else if (data.type === 'heartbeat') {
+            // Ignore heartbeats (just keeps connection alive)
+          } else if (data.type === 'connected') {
+            console.log('✅', data.message);
           } else if (data.type === 'error' && onError) {
             onError(new Error(data.message));
           }
@@ -85,9 +93,9 @@ export function useLiveStream(options: UseLiveStreamOptions = {}) {
         }
       };
 
-      scoresSource.onerror = () => {
-        console.log('⚠️ Scores stream connection error');
-        onError?.(new Error('Scores stream disconnected'));
+      scoresSource.onerror = (err) => {
+        console.log('⚠️ Scores stream error (will reconnect)');
+        // Don't trigger error - let it reconnect automatically
       };
 
       scoresSourceRef.current = scoresSource;

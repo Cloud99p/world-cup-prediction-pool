@@ -76,6 +76,26 @@ async function main() {
   const idl = JSON.parse(fs.readFileSync(idlPath, "utf-8"));
   const program = new anchor.Program(idl, TXLINE_PROGRAM_ID, provider);
 
+  // CRITICAL CHECK: Verify pricing_matrix PDA exists on-chain
+  console.log("\n🔍 Checking pricing_matrix PDA...");
+  try {
+    const pricingMatrixInfo = await connection.getAccountInfo(PRICING_MATRIX_PDA);
+    if (!pricingMatrixInfo) {
+      console.error("❌ pricing_matrix PDA does NOT exist on-chain!");
+      console.error(`   PDA: ${PRICING_MATRIX_PDA.toBase58()}`);
+      console.error("\n⚠️  This is a TxODDS-side issue. The pricing_matrix must be initialized by TxODDS.");
+      console.error("\n💡 Contact TxODDS support (Aidan) to initialize pricing_matrix on mainnet.");
+      console.error("   Discord: https://discord.gg/txodds");
+      console.error("   Email: support@txodds.com");
+      console.error("\n📝 Reference: GitHub issue or Discord ticket-0013");
+      process.exit(1);
+    }
+    console.log(`✅ pricing_matrix PDA exists (${pricingMatrixInfo.data.length} bytes)`);
+  } catch (error: any) {
+    console.error(`❌ Error checking pricing_matrix: ${error.message}`);
+    process.exit(1);
+  }
+
   console.log("\n📋 Subscription Details:");
   console.log(`   Service Level: ${SERVICE_LEVEL_ID} (${SERVICE_LEVEL_ID === 1 ? '60s delay' : 'Real-time'})`);
   console.log(`   Duration: ${DURATION_WEEKS} weeks`);
@@ -127,10 +147,15 @@ async function main() {
     }
     
     // Common issues
-    if (error.message.includes("pricing_matrix")) {
+    if (error.message.includes("pricing_matrix") || error.message.includes("invalid account")) {
       console.log("\n⚠️  Issue: pricing_matrix account problem");
       console.log("💡 The PDA might exist but not be initialized properly");
       console.log("💡 Or the instruction expects a different account structure");
+      console.log("\n💡 Contact TxODDS (Aidan) to verify pricing_matrix initialization on mainnet.");
+    }
+    
+    if (error.message.includes("insufficient")) {
+      console.log("\n⚠️  Insufficient SOL balance. Fund wallet with at least 0.05 SOL for fees.");
     }
     
     process.exit(1);

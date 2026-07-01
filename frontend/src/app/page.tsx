@@ -11,7 +11,7 @@ export default function Home() {
   const [matches, setMatches] = useState<MatchFixture[]>([]);
   const [leagues, setLeagues] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'all' | 'live'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'live' | 'previous'>('all');
   const [selectedLeague, setSelectedLeague] = useState<string>('all');
   const [liveCount, setLiveCount] = useState(0);
 
@@ -33,12 +33,16 @@ export default function Home() {
   const fetchMatches = async () => {
     setLoading(true);
     try {
-      let url = '/api/matches';
+      let url = '';
       
       if (activeTab === 'live') {
         url = '/api/matches/live';
+      } else if (activeTab === 'previous') {
+        url = '/api/matches/previous';
       } else if (selectedLeague !== 'all') {
         url = `/api/matches/league/${selectedLeague}`;
+      } else {
+        url = '/api/matches/upcoming';
       }
 
       const response = await fetch(url);
@@ -55,8 +59,10 @@ export default function Home() {
   const getTabLabel = () => {
     if (activeTab === 'live') {
       return `🔴 Live Matches (${liveCount})`;
+    } else if (activeTab === 'previous') {
+      return `📋 Previous Matches`;
     }
-    return '📅 All Matches';
+    return '📅 Upcoming Matches';
   };
 
   return (
@@ -112,7 +118,19 @@ export default function Home() {
                   : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
               }`}
             >
-              📅 All Matches
+              📅 Upcoming
+            </button>
+
+            {/* Previous Matches Tab */}
+            <button
+              onClick={() => setActiveTab('previous')}
+              className={`px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap ${
+                activeTab === 'previous'
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              📋 Previous
             </button>
           </div>
         </div>

@@ -31,11 +31,12 @@ export default function MatchCard({ match }: MatchCardProps) {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
+    return date.toLocaleString('en-US', {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+      timeZone: undefined, // Use browser's local timezone
     });
   };
 
@@ -61,11 +62,12 @@ export default function MatchCard({ match }: MatchCardProps) {
             </span>
           ) : (
             <span className="text-gray-400 text-sm">
-              {new Date(match.startTime).toLocaleDateString('en-US', {
+              {new Date(match.startTime).toLocaleString('en-US', {
                 month: 'short',
                 day: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit',
+                timeZone: undefined, // Use browser's local timezone
               })}
             </span>
           )}

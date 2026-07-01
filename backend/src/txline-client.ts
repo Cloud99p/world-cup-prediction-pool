@@ -255,7 +255,9 @@ export class TxLINEClient {
    * Get fixture snapshot (match details)
    */
   async getFixtureSnapshot(fixtureId: number): Promise<FixtureSnapshot> {
-    const response = await this.client.get(`/api/scores/snapshot/${fixtureId}`);
+    const response = await this.client.get(`/api/fixtures/snapshot`, {
+      params: { fixtureId },
+    });
     return response.data as FixtureSnapshot;
   }
 
@@ -263,7 +265,7 @@ export class TxLINEClient {
    * Get all live fixtures
    */
   async getLiveFixtures(): Promise<FixtureSnapshot[]> {
-    const response = await this.client.get('/api/scores/live');
+    const response = await this.client.get('/api/fixtures/snapshot');
     return response.data as FixtureSnapshot[];
   }
 
@@ -271,7 +273,7 @@ export class TxLINEClient {
    * Get upcoming fixtures for a league
    */
   async getUpcomingFixtures(leagueId: number, limit: number = 20): Promise<FixtureSnapshot[]> {
-    const response = await this.client.get('/api/scores/upcoming', {
+    const response = await this.client.get('/api/fixtures/upcoming', {
       params: { leagueId, limit },
     });
     return response.data as FixtureSnapshot[];

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useBetStore } from '@/store/betStore';
 import { MatchFixture, ScoreUpdate } from '@/types';
 import { useLiveScores } from '@/hooks/useLiveScores';
+import { useLiveStream } from '@/hooks/useLiveStream';
 
 interface MatchCardProps {
   match: MatchFixture;
@@ -17,6 +18,19 @@ export default function MatchCard({ match }: MatchCardProps) {
   const { getScore, isLive } = useLiveScores({ 
     fixtureId: match.fixtureId,
     enabled: match.status === 'live',
+  });
+  
+  // Connect to live SSE stream for real-time updates
+  useLiveStream({
+    enabled: match.status === 'live',
+    onScoreUpdate: (update) => {
+      console.log('📊 Live score update:', update);
+      // Trigger re-render to show updated score
+      window.location.reload();
+    },
+    onError: (error) => {
+      console.error('❌ Live stream error:', error.message);
+    },
   });
   
   const liveScore = getScore(match.fixtureId);

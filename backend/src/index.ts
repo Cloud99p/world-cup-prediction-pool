@@ -269,27 +269,6 @@ app.get('/api/matches/live', async (req, res) => {
     });
   }
 });
-    
-    // Transform and fetch odds for live matches
-    const matches = await Promise.all(
-      liveMatches.map(async (fixture: any) => {
-        const odds = await txlineClient.getOddsSnapshot(fixture.FixtureId);
-        return {
-          ...transformFixture(fixture),
-          odds: transformOdds(odds),
-        };
-      })
-    );
-    
-    res.json({ matches, count: matches.length, source: 'txline' });
-  } catch (error: any) {
-    console.error('Failed to fetch live matches:', error.message);
-    res.status(500).json({ 
-      error: 'Failed to fetch live matches',
-      message: error.message,
-    });
-  }
-});
 
 /**
  * Get previous/finished matches with scores (MUST come before /:fixtureId)

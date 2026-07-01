@@ -104,6 +104,48 @@ async function main() {
 
   console.log("\n🚀 Sending subscription transaction...");
 
+  // 🔍 DEBUG: Log all account details before sending
+  console.log("\n📋 Account Details (DEBUG):");
+  console.log(`   user: ${wallet.publicKey.toBase58()}`);
+  console.log(`   pricingMatrix: ${PRICING_MATRIX_PDA.toBase58()}`);
+  console.log(`   tokenMint: ${SUBSCRIPTION_TOKEN_MINT.toBase58()}`);
+  
+  const userTokenAccount = await anchor.utils.token.associatedAddress({
+    mint: SUBSCRIPTION_TOKEN_MINT,
+    owner: wallet.publicKey,
+  });
+  console.log(`   userTokenAccount: ${userTokenAccount.toBase58()}`);
+  
+  const tokenTreasuryVault = await anchor.utils.token.associatedAddress({
+    mint: SUBSCRIPTION_TOKEN_MINT,
+    owner: TOKEN_TREASURY_PDA,
+  });
+  console.log(`   tokenTreasuryVault: ${tokenTreasuryVault.toBase58()}`);
+  
+  console.log(`   tokenTreasuryPda: ${TOKEN_TREASURY_PDA.toBase58()}`);
+  console.log(`   tokenProgram: ${TOKEN_2022_PROGRAM_ID.toBase58()}`);
+  console.log(`   associatedTokenProgram: ${ASSOCIATED_TOKEN_PROGRAM_ID.toBase58()}`);
+  console.log(`   systemProgram: ${SystemProgram.programId.toBase58()}`);
+
+  // 🔍 DEBUG: Check if accounts exist on-chain
+  console.log("\n🔍 Account Existence Check:");
+  const pricingInfo = await connection.getAccountInfo(PRICING_MATRIX_PDA);
+  console.log(`   pricing_matrix exists: ${!!pricingInfo} (${pricingInfo ? pricingInfo.data.length + ' bytes' : 'N/A'})`);
+  
+  const tokenMintInfo = await connection.getAccountInfo(SUBSCRIPTION_TOKEN_MINT);
+  console.log(`   tokenMint exists: ${!!tokenMintInfo}`);
+  
+  const userTokenInfo = await connection.getAccountInfo(userTokenAccount);
+  console.log(`   userTokenAccount exists: ${!!userTokenInfo}`);
+  
+  const treasuryVaultInfo = await connection.getAccountInfo(tokenTreasuryVault);
+  console.log(`   tokenTreasuryVault exists: ${!!treasuryVaultInfo}`);
+  
+  const treasuryPdaInfo = await connection.getAccountInfo(TOKEN_TREASURY_PDA);
+  console.log(`   tokenTreasuryPda exists: ${!!treasuryPdaInfo}`);
+
+  console.log("\n📡 Building transaction...");
+
   try {
     // Subscribe on-chain - FREE tier (no TxL payment required)
     // Following official TxLINE docs: https://txline.txodds.com/documentation/worldcup
@@ -113,14 +155,8 @@ async function main() {
         user: wallet.publicKey,
         pricingMatrix: PRICING_MATRIX_PDA,
         tokenMint: SUBSCRIPTION_TOKEN_MINT,
-        userTokenAccount: await anchor.utils.token.associatedAddress({
-          mint: SUBSCRIPTION_TOKEN_MINT,
-          owner: wallet.publicKey,
-        }),
-        tokenTreasuryVault: await anchor.utils.token.associatedAddress({
-          mint: SUBSCRIPTION_TOKEN_MINT,
-          owner: TOKEN_TREASURY_PDA,
-        }),
+        userTokenAccount: userTokenAccount,
+        tokenTreasuryVault: tokenTreasuryVault,
         tokenTreasuryPda: TOKEN_TREASURY_PDA,
         tokenProgram: TOKEN_2022_PROGRAM_ID,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,

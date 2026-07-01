@@ -25,9 +25,11 @@ const PORT = process.env.PORT || 8080;
 app.use(cors());
 app.use(express.json());
 
-// Initialize TxLINE client
+// Initialize TxLINE client with authentication
 const txlineClient = new TxLINEClient({
   baseUrl: process.env.TXLINE_BASE_URL || 'https://txline.txodds.com',
+  jwt: process.env.TXLINE_JWT,
+  apiToken: process.env.TXLINE_API_TOKEN,
 });
 
 // Initialize Keeper Bot (if enabled)

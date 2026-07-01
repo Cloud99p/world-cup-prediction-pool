@@ -277,6 +277,44 @@ export class TxLINEClient {
   }
 
   /**
+   * Get live odds updates for a fixture
+   * GET /api/odds/updates/{fixtureId}
+   */
+  async getOddsUpdates(fixtureId: number): Promise<any[]> {
+    const response = await this.client.get(`/api/odds/updates/${fixtureId}`);
+    return response.data as any[];
+  }
+
+  /**
+   * Get odds updates for a 5-minute interval
+   * GET /api/odds/updates/{epochDay}/{hourOfDay}/{interval}
+   */
+  async getOddsUpdatesByInterval(
+    epochDay: number,
+    hourOfDay: number,
+    interval: number,
+    fixtureId?: number
+  ): Promise<any[]> {
+    const params: Record<string, any> = {};
+    if (fixtureId) params.fixtureId = fixtureId;
+    
+    const response = await this.client.get(
+      `/api/odds/updates/${epochDay}/${hourOfDay}/${interval}`,
+      { params }
+    );
+    return response.data as any[];
+  }
+
+  /**
+   * Get fixture updates for a time period
+   * GET /api/fixtures/updates/{epochDay}/{hourOfDay}
+   */
+  async getFixtureUpdates(epochDay: number, hourOfDay: number): Promise<any[]> {
+    const response = await this.client.get(`/api/fixtures/updates/${epochDay}/${hourOfDay}`);
+    return response.data as any[];
+  }
+
+  /**
    * Get Merkle proof for stat validation
    * GET /api/scores/stat-validation
    */

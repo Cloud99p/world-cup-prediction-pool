@@ -602,6 +602,123 @@ app.get('/api/scores/historical/:fixtureId', async (req, res) => {
 });
 
 /**
+ * Get live scores updates for a fixture (TxLINE: /api/scores/updates/{fixtureId})
+ */
+app.get('/api/scores/updates/:fixtureId', async (req, res) => {
+  try {
+    const fixtureId = parseInt(req.params.fixtureId);
+    
+    if (!process.env.TXLINE_API_TOKEN) {
+      return res.status(400).json({ error: 'TxLINE not configured' });
+    }
+
+    const scores = await txlineClient.getScoresUpdates(fixtureId);
+    res.json({ scores, source: 'txline' });
+  } catch (error: any) {
+    console.error('Failed to fetch scores updates:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to fetch scores updates',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * Get live odds updates for a fixture (TxLINE: /api/odds/updates/{fixtureId})
+ */
+app.get('/api/odds/updates/:fixtureId', async (req, res) => {
+  try {
+    const fixtureId = parseInt(req.params.fixtureId);
+    
+    if (!process.env.TXLINE_API_TOKEN) {
+      return res.status(400).json({ error: 'TxLINE not configured' });
+    }
+
+    const odds = await txlineClient.getOddsUpdates(fixtureId);
+    res.json({ odds, source: 'txline' });
+  } catch (error: any) {
+    console.error('Failed to fetch odds updates:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to fetch odds updates',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * Get fixture updates by time period (TxLINE: /api/fixtures/updates/{epochDay}/{hourOfDay})
+ */
+app.get('/api/fixtures/updates/:epochDay/:hourOfDay', async (req, res) => {
+  try {
+    const epochDay = parseInt(req.params.epochDay);
+    const hourOfDay = parseInt(req.params.hourOfDay);
+    
+    if (!process.env.TXLINE_API_TOKEN) {
+      return res.status(400).json({ error: 'TxLINE not configured' });
+    }
+
+    const fixtures = await txlineClient.getFixtureUpdates(epochDay, hourOfDay);
+    res.json({ fixtures, source: 'txline' });
+  } catch (error: any) {
+    console.error('Failed to fetch fixture updates:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to fetch fixture updates',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * Get odds updates by time period (TxLINE: /api/odds/updates/{epochDay}/{hourOfDay}/{interval})
+ */
+app.get('/api/odds/updates/:epochDay/:hourOfDay/:interval', async (req, res) => {
+  try {
+    const epochDay = parseInt(req.params.epochDay);
+    const hourOfDay = parseInt(req.params.hourOfDay);
+    const interval = parseInt(req.params.interval);
+    
+    if (!process.env.TXLINE_API_TOKEN) {
+      return res.status(400).json({ error: 'TxLINE not configured' });
+    }
+
+    const fixtureId = req.query.fixtureId ? parseInt(req.query.fixtureId as string) : undefined;
+    const odds = await txlineClient.getOddsUpdatesByInterval(epochDay, hourOfDay, interval, fixtureId);
+    res.json({ odds, source: 'txline' });
+  } catch (error: any) {
+    console.error('Failed to fetch odds updates by interval:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to fetch odds updates by interval',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * Get scores updates by time period (TxLINE: /api/scores/updates/{epochDay}/{hourOfDay}/{interval})
+ */
+app.get('/api/scores/updates/:epochDay/:hourOfDay/:interval', async (req, res) => {
+  try {
+    const epochDay = parseInt(req.params.epochDay);
+    const hourOfDay = parseInt(req.params.hourOfDay);
+    const interval = parseInt(req.params.interval);
+    
+    if (!process.env.TXLINE_API_TOKEN) {
+      return res.status(400).json({ error: 'TxLINE not configured' });
+    }
+
+    const fixtureId = req.query.fixtureId ? parseInt(req.query.fixtureId as string) : undefined;
+    const scores = await txlineClient.getScoresUpdatesByInterval(epochDay, hourOfDay, interval, fixtureId);
+    res.json({ scores, source: 'txline' });
+  } catch (error: any) {
+    console.error('Failed to fetch scores updates by interval:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to fetch scores updates by interval',
+      message: error.message,
+    });
+  }
+});
+
+/**
  * Get active pools
  */
 app.get('/api/pools', async (req, res) => {

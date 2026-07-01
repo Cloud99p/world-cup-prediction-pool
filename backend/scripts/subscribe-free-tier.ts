@@ -40,10 +40,19 @@ const [PRICING_MATRIX_PDA] = PublicKey.findProgramAddressSync(
   TXLINE_PROGRAM_ID
 );
 
-const [TOKEN_TREASURY_PDA] = PublicKey.findProgramAddressSync(
+// Try multiple possible treasury PDA seeds
+const [TOKEN_TREASURY_PDA_V2] = PublicKey.findProgramAddressSync(
   [Buffer.from("token_treasury_v2")],
   TXLINE_PROGRAM_ID
 );
+
+const [TOKEN_TREASURY_PDA] = PublicKey.findProgramAddressSync(
+  [Buffer.from("token_treasury")],
+  TXLINE_PROGRAM_ID
+);
+
+// Use v2 for now
+const TOKEN_TREASURY_PDA_TO_USE = TOKEN_TREASURY_PDA_V2;
 
 async function main() {
   console.log("🌍 TxLINE FREE Tier Subscription (Service Level 12)");
@@ -121,17 +130,39 @@ async function main() {
   console.log(`   tokenMint: ${SUBSCRIPTION_TOKEN_MINT.toBase58()}`);
   
   // 🔧 FIX: Use the token account that EXISTS (from debug script)
-  // The anchor.utils.token.associatedAddress derivation was producing wrong address
   const userTokenAccount = new PublicKey("BvnhGgkoszpj1pFpp6VBrZ7enA7F6tspUJGEPhcw95yU");
   console.log(`   userTokenAccount: ${userTokenAccount.toBase58()} (hardcoded - verified exists)`);
   
+  // 🔍 DEBUG: Check multiple treasury PDA variations
+  console.log(`\n🏛️  Treasury PDA Checks:`);
+  
+  const [treasuryV2] = PublicKey.findProgramAddressSync(
+    [Buffer.from("token_treasury_v2")],
+    TXLINE_PROGRAM_ID
+  );
+  const treasuryV2Info = await connection.getAccountInfo(treasuryV2);
+  console.log(`   token_treasury_v2: ${treasuryV2.toBase58()}`);
+  console.log(`   Exists: ${!!treasuryV2Info}`);
+  
+  const [treasury] = PublicKey.findProgramAddressSync(
+    [Buffer.from("token_treasury")],
+    TXLINE_PROGRAM_ID
+  );
+  const treasuryInfo = await connection.getAccountInfo(treasury);
+  console.log(`   token_treasury: ${treasury.toBase58()}`);
+  console.log(`   Exists: ${!!treasuryInfo}`);
+  
+  // Use whichever exists
+  const TREASURY_PDA = treasuryV2Info ? treasuryV2 : (treasuryInfo ? treasury : treasuryV2);
+  console.log(`   → Using: ${TREASURY_PDA.toBase58()}`);
+  
   const tokenTreasuryVault = await anchor.utils.token.associatedAddress({
     mint: SUBSCRIPTION_TOKEN_MINT,
-    owner: TOKEN_TREASURY_PDA,
+    owner: TREASURY_PDA,
   });
+  const vaultInfo = await connection.getAccountInfo(tokenTreasuryVault);
   console.log(`   tokenTreasuryVault: ${tokenTreasuryVault.toBase58()}`);
-  
-  console.log(`   tokenTreasuryPda: ${TOKEN_TREASURY_PDA.toBase58()}`);
+  console.log(`   Exists: ${!!vaultInfo}`);
   console.log(`   tokenProgram: ${TOKEN_2022_PROGRAM_ID.toBase58()}`);
   console.log(`   associatedTokenProgram: ${ASSOCIATED_TOKEN_PROGRAM_ID.toBase58()}`);
   console.log(`   systemProgram: ${SystemProgram.programId.toBase58()}`);
@@ -166,7 +197,7 @@ async function main() {
         tokenMint: SUBSCRIPTION_TOKEN_MINT,
         userTokenAccount: userTokenAccount,
         tokenTreasuryVault: tokenTreasuryVault,
-        tokenTreasuryPda: TOKEN_TREASURY_PDA,
+        tokenTreasuryPda: TREASURY_PDA,
         tokenProgram: TOKEN_2022_PROGRAM_ID,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,

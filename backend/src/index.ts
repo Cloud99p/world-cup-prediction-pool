@@ -165,6 +165,7 @@ function transformOdds(txlineOdds: any[]) {
 
 /**
  * Get upcoming matches (sorted by start time: nearest first)
+ * Query params: date (optional) - Filter by specific date (YYYY-MM-DD)
  */
 app.get('/api/matches/upcoming', async (req, res) => {
   try {
@@ -174,12 +175,28 @@ app.get('/api/matches/upcoming', async (req, res) => {
 
     const fixtures = await txlineClient.getFixtures();
     const now = Date.now();
+    const { date } = req.query;
     
     // Filter for matches that haven't started yet (start time in the future)
-    const upcomingMatches = fixtures.filter((fixture: any) => {
+    let upcomingMatches = fixtures.filter((fixture: any) => {
       const startTime = fixture.StartTime || 0;
       return startTime > now; // Match starts in the future
     });
+    
+    // If date filter provided, filter by that date
+    if (date) {
+      const filterDate = new Date(date as string);
+      filterDate.setHours(0, 0, 0, 0);
+      const nextDay = new Date(filterDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+      
+      upcomingMatches = upcomingMatches.filter((fixture: any) => {
+        const matchDate = new Date(fixture.StartTime);
+        return matchDate >= filterDate && matchDate < nextDay;
+      });
+      
+      console.log(`📅 Filtering upcoming matches for ${date}: ${upcomingMatches.length} found`);
+    }
     
     // Sort by start time (nearest first)
     upcomingMatches.sort((a: any, b: any) => a.StartTime - b.StartTime);
@@ -245,6 +262,7 @@ app.get('/api/matches/live', async (req, res) => {
 
 /**
  * Get previous/finished matches with scores (MUST come before /:fixtureId)
+ * Query params: date (optional) - Filter by specific date (YYYY-MM-DD)
  */
 app.get('/api/matches/previous', async (req, res) => {
   try {
@@ -254,13 +272,28 @@ app.get('/api/matches/previous', async (req, res) => {
 
     const fixtures = await txlineClient.getFixtures();
     const now = Date.now();
+    const { date } = req.query;
     
     // Filter for matches that have started (start time in the past)
-    // TxLINE returns status: null for many matches, so we use startTime instead
-    const previousMatches = fixtures.filter((fixture: any) => {
+    let previousMatches = fixtures.filter((fixture: any) => {
       const startTime = fixture.StartTime || 0;
       return startTime < now; // Match started in the past
     });
+    
+    // If date filter provided, filter by that date
+    if (date) {
+      const filterDate = new Date(date as string);
+      filterDate.setHours(0, 0, 0, 0);
+      const nextDay = new Date(filterDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+      
+      previousMatches = previousMatches.filter((fixture: any) => {
+        const matchDate = new Date(fixture.StartTime);
+        return matchDate >= filterDate && matchDate < nextDay;
+      });
+      
+      console.log(`📅 Filtering previous matches for ${date}: ${previousMatches.length} found`);
+    }
     
     // Sort by most recent first
     previousMatches.sort((a: any, b: any) => b.StartTime - a.StartTime);
@@ -288,6 +321,50 @@ app.get('/api/matches/previous', async (req, res) => {
     console.error('Failed to fetch previous matches:', error.message);
     res.status(500).json({ 
       error: 'Failed to fetch previous matches',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * Get available dates with match counts
+ */
+app.get('/api/matches/dates', async (req, res) => {
+  try {
+    if (!process.env.TXLINE_API_TOKEN) {
+      return res.status(400).json({ error: 'TxLINE not configured' });
+    }
+
+    const fixtures = await txlineClient.getFixtures();
+    const now = Date.now();
+    
+    // Group matches by date
+    const dateMap = new Map<string, { date: string; upcoming: number; previous: number }>();
+    
+    for (const fixture of fixtures) {
+      const matchDate = new Date(fixture.StartTime);
+      const dateStr = matchDate.toISOString().split('T')[0]; // YYYY-MM-DD
+      
+      if (!dateMap.has(dateStr)) {
+        dateMap.set(dateStr, { date: dateStr, upcoming: 0, previous: 0 });
+      }
+      
+      const entry = dateMap.get(dateStr)!;
+      if (fixture.StartTime > now) {
+        entry.upcoming++;
+      } else {
+        entry.previous++;
+      }
+    }
+    
+    // Convert to array and sort by date
+    const dates = Array.from(dateMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+    
+    res.json({ dates, source: 'txline' });
+  } catch (error: any) {
+    console.error('Failed to fetch match dates:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to fetch match dates',
       message: error.message,
     });
   }
@@ -357,6 +434,50 @@ app.get('/api/matches/:fixtureId', async (req, res) => {
     console.error('Failed to fetch match details:', error.message);
     res.status(500).json({ 
       error: 'Failed to fetch match details',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * Get available dates with match counts
+ */
+app.get('/api/matches/dates', async (req, res) => {
+  try {
+    if (!process.env.TXLINE_API_TOKEN) {
+      return res.status(400).json({ error: 'TxLINE not configured' });
+    }
+
+    const fixtures = await txlineClient.getFixtures();
+    const now = Date.now();
+    
+    // Group matches by date
+    const dateMap = new Map<string, { date: string; upcoming: number; previous: number }>();
+    
+    for (const fixture of fixtures) {
+      const matchDate = new Date(fixture.StartTime);
+      const dateStr = matchDate.toISOString().split('T')[0]; // YYYY-MM-DD
+      
+      if (!dateMap.has(dateStr)) {
+        dateMap.set(dateStr, { date: dateStr, upcoming: 0, previous: 0 });
+      }
+      
+      const entry = dateMap.get(dateStr)!;
+      if (fixture.StartTime > now) {
+        entry.upcoming++;
+      } else {
+        entry.previous++;
+      }
+    }
+    
+    // Convert to array and sort by date
+    const dates = Array.from(dateMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+    
+    res.json({ dates, source: 'txline' });
+  } catch (error: any) {
+    console.error('Failed to fetch match dates:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to fetch match dates',
       message: error.message,
     });
   }

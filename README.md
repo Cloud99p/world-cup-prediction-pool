@@ -42,7 +42,7 @@ Prediction Pool enables **trustless, peer-to-peer betting** on international foo
 **Demo Credentials (hardcoded):**
 - Backend API key: Pre-configured
 - TxLINE API token: Pre-configured
-- Network: Devnet (for testing)
+- Network: **Mainnet** (production)
 
 ### Option 2: Local Setup
 
@@ -112,13 +112,15 @@ npm run dev
 # Open http://localhost:3000
 ```
 
-### 4. Deploy Solana Program
+### 4. Deploy Solana Program (Mainnet)
 
 ```bash
 cd programs/prediction-pool
 anchor build
-anchor deploy
+anchor deploy --provider.cluster mainnet
 ```
+
+⚠️ **Warning:** Deploying to mainnet requires real SOL for deployment fees (~2-3 SOL). Test on devnet first!
 
 ---
 
@@ -279,8 +281,15 @@ const validation = await axios.get(
 
 | Network | Program ID |
 |---------|------------|
+| **Mainnet** | `PredPool111111111111111111111111111111111111111` |
 | Devnet | `DevnetProgramID1111111111111111111111111` |
-| Mainnet | `MainnetProgramID11111111111111111111111` |
+
+**TxLINE Program IDs:**
+
+| Network | Program ID |
+|---------|------------|
+| **Mainnet** | `9ExbZjAapQww1vfcisDmrngPinHTEfpjYRWMunJgcKaA` |
+| Devnet | `6pW64gN1s2uqjHkn1unFeEjAwJkPGHoppGvS715wyP2J` |
 
 ### PDAs
 
@@ -389,8 +398,15 @@ anchor deploy
 ```bash
 cd backend
 npm run build
-npm run deploy  # Deploys to Cloudflare Workers
+npm run deploy  # Deploys to Cloudflare Workers / Railway
 ```
+
+**Environment Variables (Backend):**
+- `SOLANA_RPC_URL=https://api.mainnet-beta.solana.com`
+- `TXLINE_PROGRAM_ID=9ExbZjAapQww1vfcisDmrngPinHTEfpjYRWMunJgcKaA`
+- `TXLINE_BASE_URL=https://txline.txodds.com`
+- `TXLINE_JWT=<your-jwt>`
+- `TXLINE_API_TOKEN=<your-api-token>`
 
 ### 3. Deploy Frontend
 
@@ -399,6 +415,11 @@ cd frontend
 npm run build
 npm run deploy  # Deploys to Vercel
 ```
+
+**Environment Variables (Vercel):**
+- `NEXT_PUBLIC_SOLANA_RPC_URL=https://api.mainnet-beta.solana.com`
+- `NEXT_PUBLIC_PREDICTION_POOL_PROGRAM_ID=PredPool111111111111111111111111111111111111111`
+- `NEXT_PUBLIC_TXLINE_PROGRAM_ID=9ExbZjAapQww1vfcisDmrngPinHTEfpjYRWMunJgcKaA`
 
 ---
 

@@ -96,7 +96,13 @@ POST /api/admin/settle/:fixtureId - Manual settlement
 
 ### 3. Solana Program (Anchor)
 
-**Program ID:** `PredPool111111111111111111111111111111111111111` (placeholder)
+**Program ID:**
+- **Mainnet:** `PredPool111111111111111111111111111111111111111`
+- Devnet: `DevnetProgramID1111111111111111111111111`
+
+**TxLINE Program ID:**
+- **Mainnet:** `9ExbZjAapQww1vfcisDmrngPinHTEfpjYRWMunJgcKaA`
+- Devnet: `6pW64gN1s2uqjHkn1unFeEjAwJkPGHoppGvS715wyP2J`
 
 **PDAs:**
 ```rust
@@ -243,11 +249,27 @@ npm run build
 vercel deploy
 ```
 
-### Backend (Cloudflare Workers)
+**Set Environment Variables:**
+```bash
+NEXT_PUBLIC_SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
+NEXT_PUBLIC_PREDICTION_POOL_PROGRAM_ID=PredPool111111111111111111111111111111111111111
+NEXT_PUBLIC_TXLINE_PROGRAM_ID=9ExbZjAapQww1vfcisDmrngPinHTEfpjYRWMunJgcKaA
+```
+
+### Backend (Cloudflare Workers / Railway)
 ```bash
 cd backend
 npm run build
 wrangler deploy
+```
+
+**Set Environment Variables:**
+```bash
+SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
+TXLINE_PROGRAM_ID=9ExbZjAapQww1vfcisDmrngPinHTEfpjYRWMunJgcKaA
+TXLINE_BASE_URL=https://txline.txodds.com
+TXLINE_JWT=<your-jwt>
+TXLINE_API_TOKEN=<your-api-token>
 ```
 
 ### Solana Program (Mainnet)
@@ -256,6 +278,7 @@ cd programs/prediction-pool
 anchor build
 anchor deploy --provider.cluster mainnet
 ```
+⚠️ **Warning:** Mainnet deployment requires ~2-3 SOL for fees. Test on devnet first!
 
 ---
 

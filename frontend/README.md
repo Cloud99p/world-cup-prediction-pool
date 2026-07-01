@@ -32,9 +32,12 @@ Create a `.env.local` file:
 
 ```bash
 NEXT_PUBLIC_BACKEND_URL=http://localhost:8080
-NEXT_PUBLIC_SOLANA_RPC_URL=https://api.devnet.solana.com
+NEXT_PUBLIC_SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
 NEXT_PUBLIC_PREDICTION_POOL_PROGRAM_ID=PredPool111111111111111111111111111111111111111
+NEXT_PUBLIC_TXLINE_PROGRAM_ID=9ExbZjAapQww1vfcisDmrngPinHTEfpjYRWMunJgcKaA
 ```
+
+⚠️ **Note:** For testing, you can use devnet: `https://api.devnet.solana.com`
 
 ### Development
 
@@ -85,7 +88,7 @@ frontend/
 
 ### 1. Wallet Integration
 - Connect Phantom, Solflare, and other Solana wallets
-- Automatic network detection (devnet/mainnet)
+- **Mainnet by default** (production)
 - Wallet modal for wallet selection
 
 ### 2. Match List

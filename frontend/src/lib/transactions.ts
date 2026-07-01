@@ -43,7 +43,7 @@ export async function placeBet(params: PlaceBetParams): Promise<TransactionResul
   try {
     const wallet = useWallet();
     const connection = new Connection(
-      process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.devnet.solana.com',
+      process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com',
       'confirmed'
     );
 
@@ -86,7 +86,7 @@ export async function claimWinnings(betPublicKey: string): Promise<TransactionRe
   try {
     const wallet = useWallet();
     const connection = new Connection(
-      process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.devnet.solana.com',
+      process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com',
       'confirmed'
     );
 

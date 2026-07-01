@@ -9,8 +9,11 @@
 git clone https://github.com/Cloud99p/world-cup-prediction-pool.git
 cd world-cup-prediction-pool
 
-# Run deployment script (devnet)
-./scripts/deploy.sh devnet
+# Run deployment script (mainnet)
+./scripts/deploy.sh mainnet
+
+# ⚠️ For testing, use devnet first:
+# ./scripts/deploy.sh devnet
 ```
 
 ### 2. Get TxLINE API Access
@@ -60,9 +63,11 @@ npm run dev
 1. Open http://localhost:3000
 2. Connect Phantom wallet
 3. Browse World Cup matches
-4. Place a test bet (use devnet USDC)
+4. Place a test bet (use **mainnet USDC**)
 5. Watch live scores via SSE
 6. (After match) Claim winnings!
+
+⚠️ **Warning:** Mainnet uses real money! Test on devnet first.
 
 ---
 
@@ -91,12 +96,14 @@ curl http://localhost:8080/api/scores/17952170
 - Check JWT and API token in .env
 
 ### "Program not found"
-- Deploy the program first: `./scripts/deploy.sh devnet`
+- Deploy the program first: `./scripts/deploy.sh mainnet`
 - Update PROGRAM_ID in .env
+- For testing: `./scripts/deploy.sh devnet`
 
 ### "Insufficient funds"
-- Fund your devnet wallet: `solana airdrop 2`
-- Get devnet USDC from faucet
+- **Mainnet:** Fund your wallet with real SOL (~0.01 SOL needed for fees)
+- **Devnet (testing):** `solana airdrop 2`
+- Get USDC from faucet (devnet) or bridge (mainnet)
 
 ---
 

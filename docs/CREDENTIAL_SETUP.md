@@ -37,11 +37,21 @@ solana-keygen pubkey
 
 ---
 
-## 2️⃣ Get Devnet SOL (2 minutes)
+## 2️⃣ Get SOL for Transaction Fees
+
+### For Mainnet (Production):
+
+**Why:** You need real SOL to pay for transaction fees on mainnet
+
+1. Buy SOL on an exchange (Coinbase, Binance, etc.)
+2. Withdraw to your Phantom wallet
+3. **Amount needed:** ~0.01 SOL for fees (deployment needs ~2-3 SOL)
+
+### For Devnet (Testing - FREE):
 
 **Why:** You need SOL to pay for transaction fees on devnet (testnet)
 
-### Using Phantom:
+### Using Phantom (Devnet Testing):
 
 1. Open Phantom wallet
 2. Switch to **Devnet** (click network selector at top)
@@ -64,7 +74,9 @@ solana airdrop 2 YOUR_WALLET_ADDRESS --url devnet
 solana balance --url devnet
 ```
 
-**Expected:** 2 SOL (devnet, worthless but needed for testing)
+**Expected:** 
+- **Mainnet:** Real SOL balance (e.g., 0.5 SOL)
+- **Devnet:** 2 SOL (testnet, free)
 
 ---
 
@@ -177,11 +189,27 @@ curl -X POST https://txline.txodds.com/api/token/activate \
 
 ---
 
-## 4️⃣ Get Devnet USDC (5 minutes)
+## 4️⃣ Get USDC for Betting
+
+### For Mainnet (Production):
+
+**Why:** You need real USDC to place real bets
+
+1. Buy USDC on an exchange
+2. Bridge to Solana (or withdraw directly if supported)
+3. **Amount needed:** Whatever you want to bet (minimum ~10 USDC for testing)
+
+### Method A: Bridge USDC to Mainnet
+
+1. Use a bridge like https://portalbridge.com or https://allbridge.io
+2. Bridge USDC from Ethereum/other chains to Solana mainnet
+3. Wait for bridge confirmation (~10-30 minutes)
+
+### For Devnet (Testing - FREE):
 
 **Why:** You need USDC to test placing bets
 
-### Method A: Mint Devnet USDC
+### Method B: Mint Devnet USDC (Testing Only)
 
 ```bash
 # USDC mint address on devnet
@@ -194,7 +222,7 @@ spl-token create-account 4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU
 spl-token mint 4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU 1000000 YOUR_WALLET_ADDRESS
 ```
 
-### Method B: Use Devnet USDC Faucet
+### Method C: Use Devnet USDC Faucet (Testing Only)
 
 1. Go to: https://faucet.solana.com (or search "devnet USDC faucet")
 2. Select USDC token
@@ -202,7 +230,7 @@ spl-token mint 4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU 1000000 YOUR_WALLET_
 4. Request tokens
 5. Wait for confirmation
 
-### Method C: Skip for Now
+### Method D: Skip for Now
 
 You can test the frontend **without real USDC** by:
 - Using mock transactions in the frontend
@@ -228,13 +256,17 @@ TXLINE_BASE_URL=https://txline.txodds.com
 TXLINE_JWT=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...  # From Step 3
 TXLINE_API_TOKEN=your_api_token_here  # From Step 3 (if activated)
 
-# Solana Configuration
-SOLANA_RPC_URL=https://api.devnet.solana.com
+# Solana Configuration (Mainnet - Production)
+SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
 SOLANA_COMMITMENT=confirmed
+TXLINE_PROGRAM_ID=9ExbZjAapQww1vfcisDmrngPinHTEfpjYRWMunJgcKaA
 
 # Program IDs (update after deployment)
 PREDICTION_POOL_PROGRAM_ID=PredPool111111111111111111111111111111111111111
-TXLINE_PROGRAM_ID=6pW64gN1s2uqjHkn1unFeEjAwJkPGHoppGvS715wyP2J
+
+# For testing, use devnet:
+# SOLANA_RPC_URL=https://api.devnet.solana.com
+# TXLINE_PROGRAM_ID=6pW64gN1s2uqjHkn1unFeEjAwJkPGHoppGvS715wyP2J
 
 # Keeper Bot Configuration
 ENABLE_KEEPER_BOT=true
@@ -255,8 +287,13 @@ nano frontend/.env.local
 **Fill in:**
 ```bash
 NEXT_PUBLIC_BACKEND_URL=http://localhost:8080
-NEXT_PUBLIC_SOLANA_RPC_URL=https://api.devnet.solana.com
+NEXT_PUBLIC_SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
 NEXT_PUBLIC_PREDICTION_POOL_PROGRAM_ID=PredPool111111111111111111111111111111111111111
+NEXT_PUBLIC_TXLINE_PROGRAM_ID=9ExbZjAapQww1vfcisDmrngPinHTEfpjYRWMunJgcKaA
+
+# For testing, use devnet:
+# NEXT_PUBLIC_SOLANA_RPC_URL=https://api.devnet.solana.com
+# NEXT_PUBLIC_TXLINE_PROGRAM_ID=6pW64gN1s2uqjHkn1unFeEjAwJkPGHoppGvS715wyP2J
 ```
 
 ---
@@ -267,6 +304,11 @@ Test each credential:
 
 ### 1. Wallet
 ```bash
+# Mainnet (production)
+solana balance --url mainnet-beta
+# Should show: Your real SOL balance
+
+# Devnet (testing)
 solana balance --url devnet
 # Should show: 2 SOL (or more)
 ```
@@ -340,6 +382,8 @@ npm run dev
 ---
 
 **Total Time:** ~15-20 minutes  
-**Total Cost:** FREE (all devnet/testnet)
+**Total Cost:** 
+- **Mainnet:** ~0.01 SOL for fees + your betting capital
+- **Devnet:** FREE (testnet)
 
 Good luck! 🚀

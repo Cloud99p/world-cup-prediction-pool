@@ -21,16 +21,24 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [publicKey, setPublicKey] = useState<PublicKey | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [balance, setBalance] = useState(0);
-  const [network, setNetwork] = useState('devnet');
+  const [network, setNetwork] = useState('mainnet-beta'); // Default to mainnet for production
   const [manuallyDisconnected, setManuallyDisconnected] = useState(false);
 
-  // Connection
+  // Connection - Default to mainnet, fallback to devnet for testing
   const connection = new Connection(
     network === 'devnet' 
       ? 'https://api.devnet.solana.com' 
       : 'https://api.mainnet-beta.solana.com',
     'confirmed'
   );
+
+  // Use environment variable if available (for Vercel deployment)
+  useEffect(() => {
+    const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL;
+    if (rpcUrl) {
+      setNetwork(rpcUrl.includes('devnet') ? 'devnet' : 'mainnet-beta');
+    }
+  }, []);
 
   // Check for Phantom on mount (only if not manually disconnected)
   useEffect(() => {

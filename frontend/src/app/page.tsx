@@ -10,15 +10,18 @@ export default function Home() {
   const { connected, publicKey, balance } = useWallet();
   const [matches, setMatches] = useState<MatchFixture[]>([]);
   const [leagues, setLeagues] = useState<any[]>([]);
+  const [dates, setDates] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'all' | 'live' | 'previous'>('all');
   const [selectedLeague, setSelectedLeague] = useState<string>('all');
+  const [selectedDate, setSelectedDate] = useState<string>('');
   const [liveCount, setLiveCount] = useState(0);
 
   useEffect(() => {
     fetchLeagues();
+    fetchDates();
     fetchMatches();
-  }, [activeTab, selectedLeague]);
+  }, [activeTab, selectedLeague, selectedDate]);
 
   const fetchLeagues = async () => {
     try {
@@ -27,6 +30,17 @@ export default function Home() {
       setLeagues(data.leagues || []);
     } catch (error) {
       console.error('Error fetching leagues:', error);
+    }
+  };
+
+  const fetchDates = async () => {
+    try {
+      const response = await fetch('/api/matches/dates');
+      const data = await response.json();
+      const dateArray = data.dates.map((d: any) => d.date);
+      setDates(dateArray);
+    } catch (error) {
+      console.error('Error fetching dates:', error);
     }
   };
 
@@ -41,18 +55,24 @@ export default function Home() {
       }
       
       let url = '';
+      const params = new URLSearchParams();
       
       if (activeTab === 'live') {
         url = '/api/matches/live';
       } else if (activeTab === 'previous') {
         url = '/api/matches/previous';
+        if (selectedDate) params.append('date', selectedDate);
       } else if (selectedLeague !== 'all') {
         url = `/api/matches/league/${selectedLeague}`;
       } else {
         url = '/api/matches/upcoming';
+        if (selectedDate) params.append('date', selectedDate);
       }
+      
+      const queryString = params.toString();
+      const fullUrl = queryString ? `${url}?${queryString}` : url;
 
-      const response = await fetch(url);
+      const response = await fetch(fullUrl);
       const data = await response.json();
       setMatches(data.matches || []);
       setLoading(false);
@@ -138,6 +158,31 @@ export default function Home() {
             >
               📋 Previous
             </button>
+
+            {/* Date Filter */}
+            <div className="flex items-center space-x-2">
+              <select
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg border border-gray-600 focus:outline-none focus:border-primary hover:border-gray-500 transition-colors"
+              >
+                <option value="">📅 All Dates</option>
+                {dates.map((date) => (
+                  <option key={date} value={date}>
+                    📅 {new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                  </option>
+                ))}
+              </select>
+              {selectedDate && (
+                <button
+                  onClick={() => setSelectedDate('')}
+                  className="px-3 py-2 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600/30 transition-colors"
+                  title="Clear date filter"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
           </div>
         </div>
 

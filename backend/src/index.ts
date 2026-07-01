@@ -256,27 +256,43 @@ app.get('/api/matches/live', async (req, res) => {
     
     // Filter to only live matches
     const liveFixtures = fixtures.filter((f: any) => {
-      const status = mapTxLINEStatus(f.Status, f.StartTime);
-      return status === 'live';
+      try {
+        const status = mapTxLINEStatus(f.Status, f.StartTime);
+        return status === 'live';
+      } catch (error) {
+        return false; // Skip if can't determine status
+      }
     });
+    
+    console.log(`🔴 Found ${liveFixtures.length} live matches out of ${fixtures.length} total`);
     
     // Transform and enrich with odds
     const transformed = await Promise.all(
       liveFixtures.map(async (fixture) => {
-        const base = transformFixture(fixture);
         try {
+          const base = transformFixture(fixture);
           const txlineOdds = await txlineClient.getOddsSnapshot(fixture.FixtureId);
           const odds = transformOdds(txlineOdds);
           return { ...base, odds };
-        } catch (error) {
-          return { ...base, odds: { HomeWin: 0, Draw: 0, AwayWin: 0, Over2_5: 0, Under2_5: 0 } };
+        } catch (error: any) {
+          console.log(`⚠️ No odds for fixture ${fixture.FixtureId}`);
+          return { 
+            fixtureId: fixture.FixtureId,
+            leagueId: fixture.CompetitionId,
+            league: fixture.Competition || 'Unknown',
+            homeTeam: fixture.Participant1IsHome ? fixture.Participant1 : fixture.Participant2,
+            awayTeam: fixture.Participant1IsHome ? fixture.Participant2 : fixture.Participant1,
+            startTime: fixture.StartTime,
+            status: 'live' as const,
+            odds: { HomeWin: 0, Draw: 0, AwayWin: 0, Over2_5: 0, Under2_5: 0 } 
+          };
         }
       })
     );
     
     res.json({ matches: transformed, source: 'txline', count: transformed.length });
   } catch (error: any) {
-    console.error('Failed to fetch live matches:', error.message);
+    console.error('❌ Failed to fetch live matches:', error.message);
     res.status(500).json({ 
       error: 'Failed to fetch live matches',
       message: error.message,

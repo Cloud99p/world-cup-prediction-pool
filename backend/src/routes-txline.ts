@@ -96,15 +96,23 @@ app.get('/api/scores/stream', async (req, res) => {
         });
         
         for (const fixture of liveFixtures) {
-          const data = {
-            type: 'score_update',
-            fixtureId: fixture.FixtureId,
-            homeScore: fixture.scores?.Score?.Participant1?.Total?.Goals ?? 0,
-            awayScore: fixture.scores?.Score?.Participant2?.Total?.Goals ?? 0,
-            gameState: fixture.Status || 'live',
-            timestamp: Date.now(),
-          };
-          res.write(`data: ${JSON.stringify(data)}\n\n`);
+          try {
+            // Fetch actual scores from TxLINE
+            const scores = await txlineClient.getScoresSnapshot(fixture.FixtureId);
+            const latestScore = scores[0];
+            
+            const data = {
+              type: 'score_update',
+              fixtureId: fixture.FixtureId,
+              homeScore: latestScore?.HomeScore ?? 0,
+              awayScore: latestScore?.AwayScore ?? 0,
+              gameState: latestScore?.GameState || fixture.Status || 'live',
+              timestamp: Date.now(),
+            };
+            res.write(`data: ${JSON.stringify(data)}\n\n`);
+          } catch (scoreError: any) {
+            // Ignore individual fixture score errors
+          }
         }
       } catch (error: any) {
         // Silently ignore polling errors

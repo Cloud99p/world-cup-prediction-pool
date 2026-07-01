@@ -62,21 +62,44 @@ app.get('/api/odds/stream', async (req, res) => {
       
       for (const message of messages) {
         if (message.trim()) {
-          // Relay the message to frontend
-          res.write(`${message}\n\n`);
+          // Parse and transform TxLINE format to frontend format
+          const lines = message.split('\n');
+          const transformedLines: string[] = [];
           
-          // Log odds updates for debugging
-          try {
-            const dataLine = message.split('\n').find(line => line.startsWith('data:'));
-            if (dataLine) {
-              const data = JSON.parse(dataLine.slice(5).trim());
-              if (data.FixtureId) {
-                console.log(`📊 TxLINE odds update: Fixture ${data.FixtureId}, ${data.MarketType || data.Market}`);
+          for (const line of lines) {
+            if (line.startsWith('event:')) {
+              // Keep event line as-is
+              transformedLines.push(line);
+            } else if (line.startsWith('data:')) {
+              try {
+                const txlineData = JSON.parse(line.slice(5).trim());
+                
+                // Transform TxLINE PascalCase to frontend camelCase
+                const transformedData: any = {
+                  type: 'odds_update',
+                  fixtureId: txlineData.FixtureId,
+                  marketType: txlineData.MarketType || txlineData.Market,
+                  odds: txlineData.Odds || [],
+                  timestamp: txlineData.Ts || Date.now(),
+                };
+                
+                transformedLines.push(`data: ${JSON.stringify(transformedData)}`);
+                
+                // Log for debugging
+                if (transformedData.fixtureId) {
+                  console.log(`📊 TxLINE odds update: Fixture ${transformedData.fixtureId}, ${transformedData.marketType}`);
+                }
+              } catch (e) {
+                // Keep original line if parse fails
+                transformedLines.push(line);
               }
+            } else {
+              transformedLines.push(line);
             }
-          } catch (e) {
-            // Ignore parse errors
           }
+          
+          // Send transformed message
+          res.write(`${transformedLines.join('\n')}\n\n`);
         }
       }
     }
@@ -137,21 +160,45 @@ app.get('/api/scores/stream', async (req, res) => {
       
       for (const message of messages) {
         if (message.trim()) {
-          // Relay the message to frontend
-          res.write(`${message}\n\n`);
+          // Parse and transform TxLINE format to frontend format
+          const lines = message.split('\n');
+          const transformedLines: string[] = [];
           
-          // Log score updates for debugging
-          try {
-            const dataLine = message.split('\n').find(line => line.startsWith('data:'));
-            if (dataLine) {
-              const data = JSON.parse(dataLine.slice(5).trim());
-              if (data.HomeScore !== undefined || data.AwayScore !== undefined) {
-                console.log(`⚽ TxLINE score update: Fixture ${data.FixtureId}, ${data.HomeScore}-${data.AwayScore}, ${data.GameState}`);
+          for (const line of lines) {
+            if (line.startsWith('event:')) {
+              // Keep event line as-is
+              transformedLines.push(line);
+            } else if (line.startsWith('data:')) {
+              try {
+                const txlineData = JSON.parse(line.slice(5).trim());
+                
+                // Transform TxLINE PascalCase to frontend camelCase
+                const transformedData: any = {
+                  type: 'score_update',
+                  fixtureId: txlineData.FixtureId,
+                  homeScore: txlineData.HomeScore ?? 0,
+                  awayScore: txlineData.AwayScore ?? 0,
+                  gameState: txlineData.GameState || txlineData.Status || 'live',
+                  timestamp: txlineData.Ts || Date.now(),
+                };
+                
+                transformedLines.push(`data: ${JSON.stringify(transformedData)}`);
+                
+                // Log for debugging
+                if (transformedData.homeScore !== undefined || transformedData.awayScore !== undefined) {
+                  console.log(`⚽ TxLINE score update: Fixture ${transformedData.fixtureId}, ${transformedData.homeScore}-${transformedData.awayScore}, ${transformedData.gameState}`);
+                }
+              } catch (e) {
+                // Keep original line if parse fails
+                transformedLines.push(line);
               }
+            } else {
+              transformedLines.push(line);
             }
-          } catch (e) {
-            // Ignore parse errors
           }
+          
+          // Send transformed message
+          res.write(`${transformedLines.join('\n')}\n\n`);
         }
       }
     }

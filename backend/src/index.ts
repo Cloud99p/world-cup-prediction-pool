@@ -437,6 +437,105 @@ app.get('/api/odds', async (req, res) => {
 });
 
 /**
+ * SSE Stream for real-time odds updates (Bet9ja-style live odds)
+ * GET /api/odds/stream
+ */
+app.get('/api/odds/stream', async (req, res) => {
+  try {
+    // Set SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    
+    console.log('📡 Opening SSE odds stream...');
+    
+    // Connect to TxLINE SSE stream
+    const stream = txlineClient.connectOddsStream(
+      (oddsUpdate) => {
+        // Forward odds update to frontend clients
+        const data = {
+          type: 'odds_update',
+          fixtureId: oddsUpdate.FixtureId,
+          marketType: oddsUpdate.MarketType,
+          odds: oddsUpdate.Odds,
+          timestamp: oddsUpdate.Ts,
+        };
+        
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+      },
+      (error) => {
+        console.log('⚠️ SSE stream error:', error.message);
+        res.write(`data: ${JSON.stringify({ type: 'error', message: error.message })}\n\n`);
+      }
+    );
+    
+    // Handle client disconnect
+    req.on('close', () => {
+      console.log('🔌 Client disconnected from odds stream');
+      // Close the SSE connection
+      // Note: EventSource doesn't have a close method, we just stop listening
+    });
+    
+  } catch (error: any) {
+    console.error('❌ Failed to open odds stream:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to open odds stream',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * SSE Stream for real-time scores updates
+ * GET /api/scores/stream
+ */
+app.get('/api/scores/stream', async (req, res) => {
+  try {
+    // Set SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    
+    console.log('⚽ Opening SSE scores stream...');
+    
+    // Connect to TxLINE SSE stream
+    const stream = txlineClient.connectScoresStream(
+      (scoreUpdate) => {
+        // Forward score update to frontend clients
+        const data = {
+          type: 'score_update',
+          fixtureId: scoreUpdate.FixtureId,
+          homeScore: scoreUpdate.HomeScore,
+          awayScore: scoreUpdate.AwayScore,
+          gameState: scoreUpdate.GameState,
+          timestamp: scoreUpdate.Ts,
+        };
+        
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+      },
+      (error) => {
+        console.log('⚠️ SSE scores stream error:', error.message);
+        res.write(`data: ${JSON.stringify({ type: 'error', message: error.message })}\n\n`);
+      }
+    );
+    
+    // Handle client disconnect
+    req.on('close', () => {
+      console.log('🔌 Client disconnected from scores stream');
+    });
+    
+  } catch (error: any) {
+    console.error('❌ Failed to open scores stream:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to open scores stream',
+      message: error.message,
+    });
+  }
+});
+
+/**
  * Get odds snapshot for a specific fixture
  */
 app.get('/api/odds/:fixtureId', async (req, res) => {

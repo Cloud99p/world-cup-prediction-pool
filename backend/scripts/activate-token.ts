@@ -52,20 +52,42 @@ async function activateToken(txSig: string) {
   console.log('\n📡 Activating API token...');
   try {
     // Following official docs: https://txline.txodds.com/documentation/worldcup
-    const activationResponse = await axios.post(
+    // Try multiple possible endpoints
+    const endpoints = [
       'https://txline.txodds.com/api/token/activate',
-      {
-        txSig,
-        walletSignature,
-        leagues: [], // Empty for free tier standard bundle
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${jwt}`,
-          'Content-Type': 'application/json',
-        },
+      'https://txline.txodds.com/token/activate', 
+      'https://txline-dev.txodds.com/api/token/activate', // fallback to dev
+    ];
+    
+    let activationResponse;
+    let usedEndpoint;
+    
+    for (const endpoint of endpoints) {
+      try {
+        console.log(`\n📡 Trying: ${endpoint}...`);
+        activationResponse = await axios.post(
+          endpoint,
+          {
+            txSig,
+            walletSignature,
+            leagues: [], // Empty for free tier standard bundle
+          },
+          {
+            headers: {
+              'Authorization': `Bearer ${jwt}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+        usedEndpoint = endpoint;
+        break;
+      } catch (error: any) {
+        console.log(`   ❌ Failed (${error.response?.status || 'unknown'})`);
+        if (endpoint === endpoints[endpoints.length - 1]) throw error;
       }
-    );
+    }
+    
+    console.log(`\n✅ Activated via: ${usedEndpoint}`);
 
     const apiToken = activationResponse.data.apiToken || activationResponse.data.token || activationResponse.data;
     

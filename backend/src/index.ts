@@ -252,19 +252,21 @@ app.get('/api/matches/previous', async (req, res) => {
     }
 
     const fixtures = await txlineClient.getFixtures();
+    const now = Date.now();
     
-    // Filter for finished matches
-    const finishedMatches = fixtures.filter((fixture: any) => {
-      const status = mapTxLINEStatus(fixture.Status, fixture.StartTime);
-      return status === 'finished';
+    // Filter for matches that have started (start time in the past)
+    // TxLINE returns status: null for many matches, so we use startTime instead
+    const previousMatches = fixtures.filter((fixture: any) => {
+      const startTime = fixture.StartTime || 0;
+      return startTime < now; // Match started in the past
     });
     
     // Sort by most recent first
-    finishedMatches.sort((a: any, b: any) => b.StartTime - a.StartTime);
+    previousMatches.sort((a: any, b: any) => b.StartTime - a.StartTime);
     
     // Transform and fetch final scores for finished matches
     const matches = await Promise.all(
-      finishedMatches.map(async (fixture: any) => {
+      previousMatches.map(async (fixture: any) => {
         try {
           const scores = await txlineClient.getScoresSnapshot(fixture.FixtureId).catch(() => []);
           return {
@@ -272,7 +274,6 @@ app.get('/api/matches/previous', async (req, res) => {
             scores: scores[0] || null,
           };
         } catch (err: any) {
-          console.error(`Failed to fetch data for fixture ${fixture.FixtureId}:`, err.message);
           return {
             ...transformFixture(fixture),
             scores: null,

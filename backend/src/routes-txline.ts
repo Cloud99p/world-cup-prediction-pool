@@ -78,20 +78,22 @@ app.get('/api/odds/stream', async (req, res) => {
               // Parse and transform TxLINE data to frontend format
               try {
                 const txlineData = JSON.parse(value);
+                console.log('🔍 Raw TxLINE odds:', JSON.stringify(txlineData));
+                
+                // Try multiple field name variations
                 const transformedData: any = {
                   type: 'odds_update',
-                  fixtureId: txlineData.FixtureId,
-                  marketType: txlineData.MarketType || txlineData.Market,
-                  odds: txlineData.Odds || [],
-                  timestamp: txlineData.Ts || Date.now(),
+                  fixtureId: txlineData.FixtureId ?? txlineData.fixtureId ?? txlineData.id,
+                  marketType: txlineData.MarketType ?? txlineData.Market ?? txlineData.marketType ?? 'Unknown',
+                  odds: txlineData.Odds ?? txlineData.odds ?? [],
+                  timestamp: txlineData.Ts ?? txlineData.ts ?? Date.now(),
                 };
                 outputLines.push(`data: ${JSON.stringify(transformedData)}`);
                 
                 // Log for debugging
-                if (transformedData.fixtureId) {
-                  console.log(`📊 TxLINE odds: Fixture ${transformedData.fixtureId}, ${transformedData.marketType}`);
-                }
-              } catch (e) {
+                console.log(`📊 TxLINE odds: Fixture ${transformedData.fixtureId}, ${transformedData.marketType}`);
+              } catch (e: any) {
+                console.log('❌ Failed to parse TxLINE odds:', value, e.message);
                 outputLines.push(`data: ${value}`);
               }
             } else if (field === 'event' || field === 'id') {
@@ -178,19 +180,23 @@ app.get('/api/scores/stream', async (req, res) => {
               // Parse and transform TxLINE data to frontend format
               try {
                 const txlineData = JSON.parse(value);
+                console.log('🔍 Raw TxLINE data:', JSON.stringify(txlineData));
+                
+                // Try multiple field name variations
                 const transformedData: any = {
                   type: 'score_update',
-                  fixtureId: txlineData.FixtureId,
-                  homeScore: txlineData.HomeScore ?? 0,
-                  awayScore: txlineData.AwayScore ?? 0,
-                  gameState: txlineData.GameState || txlineData.Status || 'live',
-                  timestamp: txlineData.Ts || Date.now(),
+                  fixtureId: txlineData.FixtureId ?? txlineData.fixtureId ?? txlineData.id,
+                  homeScore: txlineData.HomeScore ?? txlineData.homeScore ?? txlineData.Home ?? 0,
+                  awayScore: txlineData.AwayScore ?? txlineData.awayScore ?? txlineData.Away ?? 0,
+                  gameState: txlineData.GameState ?? txlineData.gameState ?? txlineData.Status ?? txlineData.status ?? 'live',
+                  timestamp: txlineData.Ts ?? txlineData.ts ?? txlineData.Timestamp ?? Date.now(),
                 };
                 outputLines.push(`data: ${JSON.stringify(transformedData)}`);
                 
                 // Log for debugging
                 console.log(`⚽ TxLINE score: Fixture ${transformedData.fixtureId}, ${transformedData.homeScore}-${transformedData.awayScore}, ${transformedData.gameState}`);
-              } catch (e) {
+              } catch (e: any) {
+                console.log('❌ Failed to parse TxLINE data:', value, e.message);
                 outputLines.push(`data: ${value}`);
               }
             } else if (field === 'event' || field === 'id') {

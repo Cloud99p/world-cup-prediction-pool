@@ -196,43 +196,7 @@ app.get('/api/matches', async (req, res) => {
 });
 
 /**
- * Get single match details
- */
-app.get('/api/matches/:fixtureId', async (req, res) => {
-  try {
-    const fixtureId = parseInt(req.params.fixtureId);
-    
-    if (!process.env.TXLINE_API_TOKEN) {
-      return res.status(400).json({ error: 'TxLINE not configured' });
-    }
-
-    const fixtures = await txlineClient.getFixtures();
-    const fixture = fixtures.find((f: any) => f.FixtureId === fixtureId);
-    
-    if (!fixture) {
-      return res.status(404).json({ error: 'Fixture not found' });
-    }
-
-    const odds = await txlineClient.getOddsSnapshot(fixtureId);
-    const scores = await txlineClient.getScoresSnapshot(fixtureId);
-    
-    res.json({
-      match: transformFixture(fixture),
-      odds: transformOdds(odds),
-      scores: scores[0] || null,
-      source: 'txline',
-    });
-  } catch (error: any) {
-    console.error('Failed to fetch match details:', error.message);
-    res.status(500).json({ 
-      error: 'Failed to fetch match details',
-      message: error.message,
-    });
-  }
-});
-
-/**
- * Get live matches only
+ * Get live matches only (MUST come before /:fixtureId)
  */
 app.get('/api/matches/live', async (req, res) => {
   try {
@@ -270,7 +234,59 @@ app.get('/api/matches/live', async (req, res) => {
 });
 
 /**
- * Get matches filtered by league
+ * Get previous/finished matches (MUST come before /:fixtureId)
+ */
+app.get('/api/matches/previous', async (req, res) => {
+  try {
+    if (!process.env.TXLINE_API_TOKEN) {
+      return res.status(400).json({ error: 'TxLINE not configured' });
+    }
+
+    const fixtures = await txlineClient.getFixtures();
+    
+    // Filter for finished matches
+    const finishedMatches = fixtures.filter((fixture: any) => {
+      const status = mapTxLINEStatus(fixture.Status, fixture.StartTime);
+      return status === 'finished';
+    });
+    
+    // Sort by start time (most recent first)
+    finishedMatches.sort((a: any, b: any) => b.StartTime - a.StartTime);
+    
+    // Transform and fetch scores for finished matches
+    const matches = await Promise.all(
+      finishedMatches.map(async (fixture: any) => {
+        try {
+          const odds = await txlineClient.getOddsSnapshot(fixture.FixtureId).catch(() => []);
+          const scores = await txlineClient.getScoresSnapshot(fixture.FixtureId).catch(() => []);
+          return {
+            ...transformFixture(fixture),
+            odds: transformOdds(odds),
+            scores: scores[0] || null,
+          };
+        } catch (err: any) {
+          console.error(`Failed to fetch data for fixture ${fixture.FixtureId}:`, err.message);
+          return {
+            ...transformFixture(fixture),
+            odds: null,
+            scores: null,
+          };
+        }
+      })
+    );
+    
+    res.json({ matches, count: matches.length, source: 'txline' });
+  } catch (error: any) {
+    console.error('Failed to fetch previous matches:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to fetch previous matches',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * Get matches filtered by league (MUST come before /:fixtureId)
  */
 app.get('/api/matches/league/:leagueId', async (req, res) => {
   try {
@@ -297,6 +313,42 @@ app.get('/api/matches/league/:leagueId', async (req, res) => {
     console.error('Failed to fetch league matches:', error.message);
     res.status(500).json({ 
       error: 'Failed to fetch league matches',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * Get single match details (MUST come AFTER specific routes)
+ */
+app.get('/api/matches/:fixtureId', async (req, res) => {
+  try {
+    const fixtureId = parseInt(req.params.fixtureId);
+    
+    if (!process.env.TXLINE_API_TOKEN) {
+      return res.status(400).json({ error: 'TxLINE not configured' });
+    }
+
+    const fixtures = await txlineClient.getFixtures();
+    const fixture = fixtures.find((f: any) => f.FixtureId === fixtureId);
+    
+    if (!fixture) {
+      return res.status(404).json({ error: 'Fixture not found' });
+    }
+
+    const odds = await txlineClient.getOddsSnapshot(fixtureId);
+    const scores = await txlineClient.getScoresSnapshot(fixtureId);
+    
+    res.json({
+      match: transformFixture(fixture),
+      odds: transformOdds(odds),
+      scores: scores[0] || null,
+      source: 'txline',
+    });
+  } catch (error: any) {
+    console.error('Failed to fetch match details:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to fetch match details',
       message: error.message,
     });
   }

@@ -180,21 +180,36 @@ app.get('/api/scores/stream', async (req, res) => {
               // Parse and transform TxLINE data to frontend format
               try {
                 const txlineData = JSON.parse(value);
-                console.log('🔍 Raw TxLINE data:', JSON.stringify(txlineData));
                 
-                // Try multiple field name variations
+                // Skip messages without FixtureId
+                if (!txlineData.FixtureId) {
+                  continue;
+                }
+                
+                // Extract scores from Stats object (TxLINE doesn't send HomeScore/AwayScore!)
+                // Stats: "1" = Home goals, "2" = Away goals
+                // Also: "2001" = Home goals, "2007" = Away goals
+                const stats = txlineData.Stats || {};
+                const homeScore = stats['1'] ?? stats['2001'] ?? 0;
+                const awayScore = stats['2'] ?? stats['2007'] ?? 0;
+                
+                // Determine if match is live based on Clock
+                const clock = txlineData.Clock;
+                const isLive = clock?.Running === true || clock?.Seconds > 0;
+                const gameState = isLive ? 'live' : (txlineData.GameState || 'scheduled');
+                
                 const transformedData: any = {
                   type: 'score_update',
-                  fixtureId: txlineData.FixtureId ?? txlineData.fixtureId ?? txlineData.id,
-                  homeScore: txlineData.HomeScore ?? txlineData.homeScore ?? txlineData.Home ?? 0,
-                  awayScore: txlineData.AwayScore ?? txlineData.awayScore ?? txlineData.Away ?? 0,
-                  gameState: txlineData.GameState ?? txlineData.gameState ?? txlineData.Status ?? txlineData.status ?? 'live',
-                  timestamp: txlineData.Ts ?? txlineData.ts ?? txlineData.Timestamp ?? Date.now(),
+                  fixtureId: txlineData.FixtureId,
+                  homeScore,
+                  awayScore,
+                  gameState,
+                  timestamp: txlineData.Ts || Date.now(),
                 };
                 outputLines.push(`data: ${JSON.stringify(transformedData)}`);
                 
                 // Log for debugging
-                console.log(`⚽ TxLINE score: Fixture ${transformedData.fixtureId}, ${transformedData.homeScore}-${transformedData.awayScore}, ${transformedData.gameState}`);
+                console.log(`⚽ TxLINE score: Fixture ${transformedData.fixtureId}, ${homeScore}-${awayScore}, ${gameState} (Clock: ${clock?.Seconds || 0}s)`);
               } catch (e: any) {
                 console.log('❌ Failed to parse TxLINE data:', value, e.message);
                 outputLines.push(`data: ${value}`);
